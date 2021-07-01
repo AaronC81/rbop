@@ -4,5 +4,6 @@
 
 mod node;
 mod test;
+mod render;
 
 pub use crate::node::{Node, Token};

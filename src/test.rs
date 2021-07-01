@@ -1,4 +1,5 @@
 use crate::{Node, Token};
+use crate::render::{Renderer, AsciiRenderer};
 
 #[test]
 fn test_upgrade() {
@@ -80,4 +81,24 @@ fn test_disambiguate() {
             ),
         )
     );
+}
+
+#[test]
+fn test_ascii_render() {
+    let tree = Node::Add(
+        box Node::Multiply(
+            box Node::Number(12),
+            box Node::Number(34),
+        ),
+        box Node::Multiply(
+            box Node::Number(56),
+            box Node::Number(78),
+        ),
+    ).disambiguate().unwrap();
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(tree);
+    assert_eq!(
+        renderer.lines,
+        vec!["12*34+56*78"],
+    )
 }

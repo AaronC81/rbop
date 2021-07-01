@@ -30,3 +30,54 @@ fn test_upgrade() {
         )
     );
 }
+
+#[test]
+fn test_disambiguate() {
+    let tree = Node::Multiply(
+        box Node::Number(1),
+        box Node::Multiply(
+            box Node::Number(2),
+            box Node::Number(3),
+        ),
+    );
+    assert_eq!(
+        tree.disambiguate().unwrap(),
+        Node::Multiply(
+            box Node::Number(1),
+            box Node::Parentheses(
+                box Node::Multiply(
+                    box Node::Number(2),
+                    box Node::Number(3),
+                ),
+            ),
+        )
+    );
+
+    let tree = Node::Multiply(
+        box Node::Add(
+            box Node::Number(1),
+            box Node::Number(2),
+        ),
+        box Node::Add(
+            box Node::Number(3),
+            box Node::Number(4),
+        ),
+    );
+    assert_eq!(
+        tree.disambiguate().unwrap(),
+        Node::Multiply(
+            box Node::Parentheses(
+                box Node::Add(
+                    box Node::Number(1),
+                    box Node::Number(2),
+                ),
+            ),
+            box Node::Parentheses(
+                box Node::Add(
+                    box Node::Number(3),
+                    box Node::Number(4),
+                ),
+            ),
+        )
+    );
+}

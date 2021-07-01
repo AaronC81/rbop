@@ -9,14 +9,14 @@ pub struct Parser<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ParserError(String);
+pub struct NodeError(String);
 
-impl fmt::Display for ParserError {
+impl fmt::Display for NodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-impl Error for ParserError {}
+impl Error for NodeError {}
 
 impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Node, Box<dyn Error>> {
@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
             // This is already a number, brilliant!
             Ok(self.current().clone())
         } else {
-            Err(box ParserError("expected a number".into()))
+            Err(box NodeError("expected a number".into()))
         }
     }
 }
@@ -134,10 +134,38 @@ pub enum Node {
     Subtract(Box<Node>, Box<Node>),
     Multiply(Box<Node>, Box<Node>),
     Divide(Box<Node>, Box<Node>),
+    Parentheses(Box<Node>),
     Unstructured(Vec<Node>),
 }
 
 impl Node {
+    /// Returns true if this node is `Add` or `Subtract`.
+    pub fn add_or_sub(&self) -> bool {
+        matches!(&self, Node::Add(_, _) | Node::Subtract(_, _))
+    }
+
+    /// Returns true if this node is `Multiply` or `Divide`.
+    pub fn mul_or_div(&self) -> bool {
+        matches!(&self, Node::Multiply(_, _) | Node::Divide(_, _))
+    }
+
+    /// Returns a clone of this node wrapped in `Parentheses`.
+    pub fn in_parentheses(&self) -> Node {
+        Node::Parentheses(box self.clone())
+    }
+
+    /// If `parens` is true, returns a clone of this node wrapped in `Parentheses`, otherwise just
+    /// returns a plain clone of this node.
+    pub fn in_parentheses_or_clone(&self, parens: bool) -> Node {
+        if parens {
+            self.in_parentheses()
+        } else {
+            self.clone()
+        }
+    }
+    
+    /// Returns a clone of this node tree where all unstructured nodes have exactly one child, and
+    /// that child is not a `Token`.
     pub fn upgrade(&self) -> Result<Node, Box<dyn Error>> {
         Ok(match self {
             // These are all simple tree walks
@@ -147,12 +175,50 @@ impl Node {
             Node::Divide(l, r) => Node::Divide(box l.upgrade()?, box r.upgrade()?),
             Node::Sqrt(n) => Node::Sqrt(box n.upgrade()?),
             Node::Number(_) | Node::Token(_) => self.clone(),
+            Node::Parentheses(n) => Node::Parentheses(box n.upgrade()?),
 
             // Upgrading an unstructured node involves parsing it
             Node::Unstructured(nodes) => Parser {
                 index: 0,
                 nodes: &nodes[..]
             }.parse()?
+        })
+    }
+
+    /// Returns a clone of this node tree with added parentheses to show the order of operations
+    /// when the tree is rendered.
+    /// The tree should be upgraded before doing this.
+    pub fn disambiguate(&self) -> Result<Node, Box<dyn Error>> {
+        Ok(match self {
+            // We need to add parentheses around:
+            //   - operations which mix precedence, e.g. (3+2)*4
+            //   - operations which go against standard associativity for - and /, e.g. 3-(3-2)
+
+            Node::Multiply(l, r) => {
+                let l = l.in_parentheses_or_clone(l.add_or_sub());
+                let r = r.in_parentheses_or_clone(r.add_or_sub() || r.mul_or_div());
+                Node::Multiply(box l, box r)
+            }
+            Node::Divide(l, r) => {
+                let l = l.in_parentheses_or_clone(l.add_or_sub());
+                let r = r.in_parentheses_or_clone(r.add_or_sub() || r.mul_or_div());
+                Node::Divide(box l, box r)
+            }
+
+            Node::Add(l, r) => {
+                let r = r.in_parentheses_or_clone(r.add_or_sub());
+                Node::Add(l.clone(), box r)
+            }
+            Node::Subtract(l, r) => {
+                let r = r.in_parentheses_or_clone(r.add_or_sub());
+                Node::Subtract(l.clone(), box r)
+            }
+
+            Node::Number(_) | Node::Sqrt(_) | Node::Parentheses(_) => self.clone(),
+
+            Node::Unstructured(_) | Node::Token(_) => return Err(box NodeError(
+                "attempting to disambiguate non-upgraded tree".into()
+            ))
         })
     }
 }

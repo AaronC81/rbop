@@ -1,5 +1,5 @@
-use crate::{Node, Token};
-use crate::render::{Renderer, AsciiRenderer};
+use crate::{Node, Token, render::Renderer};
+use crate::renderers::AsciiRenderer;
 
 #[test]
 fn test_upgrade() {

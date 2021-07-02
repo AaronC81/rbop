@@ -72,17 +72,31 @@ pub enum Glyph {
     Sqrt { inner_area: Area },
 }
 
+#[derive(Debug)]
 pub struct LayoutBlock {
-    // TODO: we probably do still need calculatingpoint for aligning common baselines
-    // e.g. 
-    //      .-
-    // 1   \|2
-    // - + ---
-    // 2    5
     pub glyphs: Vec<(Glyph, CalculatedPoint)>,
+    pub baseline: Dimension,
+}
+
+pub enum MergeBaseline {
+    SelfAsBaseline,
+    OtherAsBaseline,
 }
 
 impl LayoutBlock {
+    fn empty() -> LayoutBlock {
+        LayoutBlock { glyphs: vec![], baseline: 0 }
+    }
+
+    /// Creates a new layout block with one glyph at the origin. The baseline is the centre of this
+    /// glyph.
+    fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
+        LayoutBlock {
+            glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
+            baseline: renderer.size(glyph).height / 2,
+        }
+    }
+
     fn area(&self, renderer: &mut impl Renderer) -> Area {
         let mut width = 0;
         let mut height = 0;
@@ -103,14 +117,82 @@ impl LayoutBlock {
             glyphs: self.glyphs
                 .iter()
                 .map(|(g, p)| (*g, p.dx(dx as i64).dy(dy as i64)))
-                .collect()
+                .collect(),
+            baseline: self.baseline + dy,
         }
     }
 
-    fn merge(&self, other: LayoutBlock) -> LayoutBlock {
+    fn merge_along_baseline(&self, other: &LayoutBlock) -> LayoutBlock {
+        // Whose baseline is greater?
+        // The points can't go negative, so we'll add to the glyphs of the lesser-baselined layout
+        // block
+        let (lesser_baselined, greater_baselined) = if self.baseline < other.baseline {
+            (self, other)
+        } else {
+            (other, self)
+        };
+
+        let baseline_difference = greater_baselined.baseline - lesser_baselined.baseline;
+
+        let glyphs =
+            // Re-align the lesser-baselined glyphs
+            lesser_baselined.glyphs
+            .iter()
+            .cloned()
+            .map(|(g, p)| (g, p.dy(baseline_difference as i64)))
+            // Chain with the unmodified greater-baselined glyphs
+            .chain(greater_baselined.glyphs.iter().cloned())
+            .collect::<Vec<_>>();
+
         LayoutBlock {
-            glyphs: self.glyphs.iter().cloned().chain(other.glyphs).collect()
+            glyphs,
+            baseline: greater_baselined.baseline,
         }
+    }
+
+    /// Merges the glyphs of two layout blocks along their vertical centre.
+    fn merge_along_vertical_centre(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+        // Whose is wider? (i.e., who has the greatest vertical centre)
+        // The points can't go negative, so we'll add to the glyphs of the smaller layout block
+        let self_centre = self.area(renderer).width / 2;
+        let other_centre = other.area(renderer).width / 2;
+        let (thinner, thinner_centre, wider, wider_centre) = if self_centre < other_centre {
+            (self, self_centre, other, other_centre)
+        } else {
+            (other, other_centre, self, self_centre)
+        };
+
+        let centre_difference = wider_centre - thinner_centre;
+
+        let glyphs =
+            // Re-align the lesser-baselined glyphs
+            thinner.glyphs
+            .iter()
+            .cloned()
+            .map(|(g, p)| (g, p.dx(centre_difference as i64)))
+            // Chain with the unmodified greater-baselined glyphs
+            .chain(wider.glyphs.iter().cloned())
+            .collect::<Vec<_>>();
+
+        LayoutBlock {
+            glyphs,
+            baseline: match baseline {
+                MergeBaseline::SelfAsBaseline => self.baseline,
+                MergeBaseline::OtherAsBaseline => other.baseline,
+            },
+        }
+    }
+
+    /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
+    /// directly to the right of another layout block.
+    fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+        self.offset(other.area(renderer).width, 0)
+    }
+
+    /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
+    /// directly below another layout block.
+    fn move_below_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+        self.offset(0, other.area(renderer).height)
     }
 }
 
@@ -139,27 +221,44 @@ pub trait Renderer {
                     .map(|c| Glyph::Digit { number: c.to_digit(10).unwrap() as u8 })
                     .collect::<Vec<_>>();
 
-                let max_height = glyphs.iter().map(|g| self.size(*g).height).max().unwrap();
+                let mut block = LayoutBlock::empty();
 
-                let mut glyphs_with_points = vec![];
-                let mut current_x = 0;
-
+                // Repeatedly merge the result block with a new block created to the right of it for
+                // each glyph
                 for glyph in glyphs {
-                    glyphs_with_points.push((glyph, CalculatedPoint {
-                        x: current_x,
-                        y: self.vertical_centre_glyph(max_height, glyph),
-                    }));
-
-                    let size = self.size(glyph);
-                    current_x += size.width;
+                    block = block.merge_along_baseline(
+                        &LayoutBlock::from_glyph(self, glyph)
+                            .move_right_of_other(self, &block),
+                    );
                 }
 
-                LayoutBlock { glyphs: glyphs_with_points }
+                block
             },
 
             Node::Add(left, right) => self.layout_binop(Glyph::Add, left, right),
             Node::Subtract(left, right) => self.layout_binop(Glyph::Subtract, left, right),
             Node::Multiply(left, right) => self.layout_binop(Glyph::Multiply, left, right),
+
+            Node::Divide(top, bottom) => {
+                let top_layout = self.layout(top);
+                let bottom_layout = self.layout(bottom);
+
+                // The fraction line should be the widest of the two
+                let line_width = max(
+                    top_layout.area(self).width,
+                    bottom_layout.area(self).width,
+                );
+                let line_layout = LayoutBlock::from_glyph(self, Glyph::Fraction {
+                    inner_width: line_width
+                }).move_below_other(self, &top_layout);
+
+                let bottom_layout = bottom_layout
+                    .move_below_other(self, &line_layout);
+
+                top_layout
+                    .merge_along_vertical_centre(self, &line_layout, MergeBaseline::OtherAsBaseline)
+                    .merge_along_vertical_centre(self, &bottom_layout, MergeBaseline::SelfAsBaseline)
+            }
 
             Node::Token(_) | Node::Unstructured(_) => panic!("must upgrade to render"),
 
@@ -186,31 +285,14 @@ pub trait Renderer {
     /// Calculates layout for a binop, with the operator being the `glyph`.
     fn layout_binop(&mut self, glyph: Glyph, left: &Node, right: &Node) -> LayoutBlock where Self: std::marker::Sized {
         let left_layout = self.layout(left);
-        let right_layout = self.layout(right);
+        let binop_layout = LayoutBlock::from_glyph(self, glyph)
+            .move_right_of_other(self, &left_layout);
+        let right_layout = self.layout(right)
+            .move_right_of_other(self, &binop_layout);
 
-        let max_height = max(
-            left_layout.area(self).height, 
-            right_layout.area(self).height
-        );
-
-        let x_offset_after_left = left_layout.area(self).width;
-
-        let binop_glyph_layout = LayoutBlock {
-            glyphs: vec![
-                (glyph, CalculatedPoint {
-                    x: x_offset_after_left,
-                    // TODO: should align to baseline rather than vertical centre
-                    y: self.vertical_centre_glyph(max_height, Glyph::Add),
-                })
-            ]
-        };
-
-        let x_offset_after_binop = x_offset_after_left + self.size(Glyph::Add).width;
-
-        // TODO: ditto re v.centre
-        left_layout.offset(0, (max_height - left_layout.area(self).height) / 2)
-            .merge(binop_glyph_layout)
-            .merge(right_layout.offset(x_offset_after_binop, (max_height - right_layout.area(self).height) / 2))
+        left_layout
+            .merge_along_baseline(&binop_layout)
+            .merge_along_baseline(&right_layout)
     }
 }
 

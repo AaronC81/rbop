@@ -1,4 +1,5 @@
-use std::{cmp::max, unimplemented};
+use std::{alloc::Layout, cmp::max, unimplemented};
+use crate::Token;
 
 use crate::Node;
 
@@ -63,6 +64,7 @@ pub enum Glyph {
     Add,
     Subtract,
     Multiply,
+    Divide,
 
     Fraction { inner_width: Dimension },
 
@@ -70,6 +72,20 @@ pub enum Glyph {
     RightParenthesis { inner_height: Dimension },
 
     Sqrt { inner_area: Area },
+
+    Cursor { height: Dimension },
+}
+
+impl From<Token> for Glyph {
+    fn from(token: Token) -> Self {
+        match token {
+            Token::Add => Glyph::Add,
+            Token::Subtract => Glyph::Subtract,
+            Token::Multiply => Glyph::Multiply,
+            Token::Divide => Glyph::Divide,
+            Token::Digit(d) => Glyph::Digit { number: d },
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -215,24 +231,14 @@ pub trait Renderer {
                 // We'll worry about negatives later!
                 if *number < 0 { panic!("negative numbers not supported") }
 
-                let glyphs = (*number)
+                let glyph_layouts = (*number)
                     .to_string()
                     .chars()
                     .map(|c| Glyph::Digit { number: c.to_digit(10).unwrap() as u8 })
+                    .map(|g| LayoutBlock::from_glyph(self, g))
                     .collect::<Vec<_>>();
 
-                let mut block = LayoutBlock::empty();
-
-                // Repeatedly merge the result block with a new block created to the right of it for
-                // each glyph
-                for glyph in glyphs {
-                    block = block.merge_along_baseline(
-                        &LayoutBlock::from_glyph(self, glyph)
-                            .move_right_of_other(self, &block),
-                    );
-                }
-
-                block
+                self.layout_horizontal(&glyph_layouts[..])
             },
 
             Node::Add(left, right) => self.layout_binop(Glyph::Add, left, right),
@@ -260,7 +266,16 @@ pub trait Renderer {
                     .merge_along_vertical_centre(self, &bottom_layout, MergeBaseline::SelfAsBaseline)
             }
 
-            Node::Token(_) | Node::Unstructured(_) => panic!("must upgrade to render"),
+            Node::Token(token) => LayoutBlock::from_glyph(self, (*token).into()),
+
+            Node::Unstructured(children) => {
+                let layouts = children
+                    .iter()
+                    .map(|node| self.layout(node))
+                    .collect::<Vec<_>>();
+
+                self.layout_horizontal(&layouts[..])
+            },
 
             _ => unimplemented!()
         }
@@ -293,5 +308,22 @@ pub trait Renderer {
         left_layout
             .merge_along_baseline(&binop_layout)
             .merge_along_baseline(&right_layout)
+    }
+
+    /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
+    fn layout_horizontal(&mut self, layouts: &[LayoutBlock]) -> LayoutBlock
+        where Self: std::marker::Sized
+    {
+        let mut block = LayoutBlock::empty();
+
+        // Repeatedly merge the result block with a new block created to the right of it for
+        // each glyph
+        for layout in layouts {
+            block = block.merge_along_baseline(
+                &layout.move_right_of_other(self, &block),
+            );
+        }
+
+        block
     }
 }

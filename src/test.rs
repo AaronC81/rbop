@@ -97,7 +97,7 @@ fn test_ascii_render() {
         ),
     ).disambiguate().unwrap();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree);
+    renderer.draw_all(tree, None);
     assert_eq!(
         renderer.lines,
         vec!["12*34+56*78"],
@@ -120,7 +120,7 @@ fn test_ascii_render() {
         box Node::Number(12),
     ).disambiguate().unwrap();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree);
+    renderer.draw_all(tree, None);
     assert_eq!(
         renderer.lines,
         vec![
@@ -162,7 +162,7 @@ fn test_ascii_render() {
         Node::Token(Token::Digit(2)),
     ]);
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree);
+    renderer.draw_all(tree, None);
     assert_eq!(
         renderer.lines,
         vec![
@@ -171,6 +171,49 @@ fn test_ascii_render() {
             "      78   ",
             "12+-----+12",
             "    90     "
+        ],
+    );
+
+    // Cursor
+    let tree = Node::Unstructured(vec![
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+        Node::Token(Token::Add),
+        Node::Divide(
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(3)),
+                Node::Token(Token::Digit(4)),
+                Node::Token(Token::Add),
+                Node::Divide(
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(5)),
+                        Node::Token(Token::Digit(6)),
+                    ]),
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(7)),
+                        Node::Token(Token::Digit(8)),
+                    ]),
+                )
+            ]),
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(9)),
+                Node::Token(Token::Digit(0)),
+            ])
+        ),
+        Node::Token(Token::Add),
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+    ]);
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
+    assert_eq!(
+        renderer.lines,
+        vec![
+            "      56    ",
+            "   34+---   ",
+            "      7|8   ",
+            "12+------+12",
+            "     90     "
         ],
     );
 }

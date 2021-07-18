@@ -2,6 +2,7 @@ use std::{alloc::Layout, cmp::max, unimplemented};
 use crate::Token;
 
 use crate::Node;
+use crate::nav::NavPathNavigator;
 
 pub type Dimension = u64;
 
@@ -225,7 +226,7 @@ pub trait Renderer {
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&mut self, tree: &Node) -> LayoutBlock where Self: std::marker::Sized {        
+    fn layout(&mut self, tree: &Node, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: std::marker::Sized {        
         match tree {
             Node::Number(number) => {
                 // We'll worry about negatives later!
@@ -246,8 +247,28 @@ pub trait Renderer {
             Node::Multiply(left, right) => self.layout_binop(Glyph::Multiply, left, right),
 
             Node::Divide(top, bottom) => {
-                let top_layout = self.layout(top);
-                let bottom_layout = self.layout(bottom);
+                let (mut top_path, mut bottom_path) = {
+                    if let Some(p) = path {
+                        if p.next() == 0 {
+                            (Some(p.step()), None)
+                        } else if p.next() == 1 {
+                            (None, Some(p.step()))
+                        } else {
+                            panic!()
+                        }
+                    } else {
+                        (None, None)
+                    }
+                };
+
+                let top_layout = self.layout(
+                    top, 
+                    (&mut top_path).as_mut()
+                );
+                let bottom_layout = self.layout(
+                    bottom,
+                    (&mut bottom_path).as_mut()
+                );
 
                 // The fraction line should be the widest of the two
                 let line_width = max(
@@ -269,10 +290,55 @@ pub trait Renderer {
             Node::Token(token) => LayoutBlock::from_glyph(self, (*token).into()),
 
             Node::Unstructured(children) => {
-                let layouts = children
+                // We never actually mutate the paths...
+                // Unsafe time!
+                let mut paths = vec![];
+                let mut cursorInsertionIndex = None;
+
+                unsafe {
+                    if let Some(p) = path {
+                        let p = p as *mut NavPathNavigator;
+                        for i in 0..children.len() {
+                            paths.push({
+                                if p.as_mut().unwrap().next() == i && !p.as_mut().unwrap().here() {
+                                    // The cursor is within the child
+                                    Some(p.as_mut().unwrap().step())
+                                } else {
+                                    None
+                                }
+                            })
+                        }
+
+                        // Is the cursor in this element?
+                        if p.as_mut().unwrap().here() {
+                            cursorInsertionIndex = Some(p.as_mut().unwrap().next());
+                        }
+                    } else {
+                        for _ in 0..children.len() {
+                            paths.push(None);
+                        }
+                    }
+                }
+
+                let mut layouts = children
                     .iter()
-                    .map(|node| self.layout(node))
+                    .enumerate()
+                    .map(|(i, node)| self.layout(
+                        node,
+                        (&mut paths[i]).as_mut()
+                    ))
                     .collect::<Vec<_>>();
+
+                // If the cursor is here, insert it
+                if let Some(idx) = cursorInsertionIndex {
+                    // TODO: height should be max of adjacents
+                    layouts.insert(
+                        idx, 
+                        LayoutBlock::from_glyph(self, Glyph::Cursor {
+                            height: 1,
+                        })
+                    )
+                }
 
                 self.layout_horizontal(&layouts[..])
             },
@@ -282,8 +348,8 @@ pub trait Renderer {
     }
 
     /// Initialises the graphics surface and draws a node tree onto it.
-    fn draw_all(&mut self, node: Node) where Self: std::marker::Sized {
-        let layout = self.layout(&node);
+    fn draw_all(&mut self, node: Node, path: Option<&mut NavPathNavigator>) where Self: std::marker::Sized {
+        let layout = self.layout(&node, path);
         let area = layout.area(self);
         self.init(area);
         for (glyph, point) in layout.glyphs {
@@ -299,10 +365,14 @@ pub trait Renderer {
 
     /// Calculates layout for a binop, with the operator being the `glyph`.
     fn layout_binop(&mut self, glyph: Glyph, left: &Node, right: &Node) -> LayoutBlock where Self: std::marker::Sized {
-        let left_layout = self.layout(left);
+        // The navigation path is only for unstructured nodes, and the structured binops will never
+        // appear will an unstructured tree (except divide, which is handled separately), so all
+        // paths here are passed as None.
+
+        let left_layout = self.layout(left, None);
         let binop_layout = LayoutBlock::from_glyph(self, glyph)
             .move_right_of_other(self, &left_layout);
-        let right_layout = self.layout(right)
+        let right_layout = self.layout(right, None)
             .move_right_of_other(self, &binop_layout);
 
         left_layout

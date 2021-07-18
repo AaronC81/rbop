@@ -40,9 +40,3 @@ impl<'a> NavPathNavigator<'a> {
         NavPathNavigator { index: self.index + 1, path: self.path }
     }
 }
-
-mod consts {
-    pub const Only: usize = 0;
-    pub const BinopFirst: usize = 0;
-    pub const BinopSecond: usize = 1;
-}

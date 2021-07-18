@@ -131,6 +131,48 @@ fn test_ascii_render() {
             "    90     "
         ],
     );
+
+    let tree = Node::Unstructured(vec![
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+        Node::Token(Token::Add),
+        Node::Divide(
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(3)),
+                Node::Token(Token::Digit(4)),
+                Node::Token(Token::Add),
+                Node::Divide(
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(5)),
+                        Node::Token(Token::Digit(6)),
+                    ]),
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(7)),
+                        Node::Token(Token::Digit(8)),
+                    ]),
+                )
+            ]),
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(9)),
+                Node::Token(Token::Digit(0)),
+            ])
+        ),
+        Node::Token(Token::Add),
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+    ]);
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(tree);
+    assert_eq!(
+        renderer.lines,
+        vec![
+            "      56   ",
+            "   34+--   ",
+            "      78   ",
+            "12+-----+12",
+            "    90     "
+        ],
+    );
 }
 
 #[test]

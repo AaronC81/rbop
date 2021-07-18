@@ -2,6 +2,7 @@ use crate::{Node};
 
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
+#[derive(PartialEq, Eq, Debug)]
 pub struct NavPath {
     path: Vec<usize>,
 }

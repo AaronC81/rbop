@@ -262,11 +262,54 @@ impl Node {
             },
             
             Node::Number(_) | Node::Token(_) => panic!("cannot navigate into this"),
+            _ => panic!("cannot navigate into structured node"),
+        }
+    }
 
-            Node::Add(_, _)
-            | Node::Subtract(_, _)
-            | Node::Multiply(_, _)
-            | Node::Parentheses(_) => panic!("cannot navigate into structured node"),
+    // Modifies the given navigation path to move the cursor right.
+    pub fn move_right(&mut self, path: &mut NavPath) {
+        // Fetch the node which we're navigating within
+        let (current_node, index) = self.navigate(&mut path.to_navigator());
+        let children = current_node.unwrap_unstructured();
+
+        // Are we at the end of this node?
+        if index == children.len() {
+            // Is there another node above this one?
+            if !path.root() {
+                // Move out of the unstructured and the structural node above it
+                path.pop(2);
+
+                // Advance past the node which we were inside
+                path.offset(1);
+            } else {
+                // There's nowhere to go, just don't move
+            }
+        } else {
+            // What's to our right?
+            let right_child = &children[index];
+
+            match right_child {
+                // Structured nodes
+                Node::Sqrt(_) | Node::Divide(_, _) => {
+                    // Navigate into its first/only slot, and start at the first item of the
+                    // unstructured
+                    path.push(0);
+                    path.push(0);
+                },
+
+                // Anything else, we can just move past it
+                _ => path.offset(1),
+            }
+        }
+    }
+
+    /// Panics if this node is not unstructured, and returns the children of
+    /// the node.
+    pub fn unwrap_unstructured(&mut self) -> &mut Vec<Node> {
+        if let Node::Unstructured(children) = self {
+            children
+        } else {
+            panic!("expected node to be unstructured")
         }
     }
 }

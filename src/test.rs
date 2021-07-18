@@ -2,6 +2,45 @@ use crate::nav::NavPath;
 use crate::{Node, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
 
+/// ```text
+///       56    
+///    34+--
+///       78   
+/// 12+-----+12
+///     90  
+/// ```   
+fn complex_unstructured_expression() -> Node {
+    Node::Unstructured(vec![
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+        Node::Token(Token::Add),
+        Node::Divide(
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(3)),
+                Node::Token(Token::Digit(4)),
+                Node::Token(Token::Add),
+                Node::Divide(
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(5)),
+                        Node::Token(Token::Digit(6)),
+                    ]),
+                    box Node::Unstructured(vec![
+                        Node::Token(Token::Digit(7)),
+                        Node::Token(Token::Digit(8)),
+                    ]),
+                )
+            ]),
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(9)),
+                Node::Token(Token::Digit(0)),
+            ])
+        ),
+        Node::Token(Token::Add),
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+    ])
+}
+
 #[test]
 fn test_upgrade() {
     let unstructured = Node::Unstructured(vec![
@@ -132,35 +171,7 @@ fn test_ascii_render() {
         ],
     );
 
-    let tree = Node::Unstructured(vec![
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-        Node::Token(Token::Add),
-        Node::Divide(
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(3)),
-                Node::Token(Token::Digit(4)),
-                Node::Token(Token::Add),
-                Node::Divide(
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(5)),
-                        Node::Token(Token::Digit(6)),
-                    ]),
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(7)),
-                        Node::Token(Token::Digit(8)),
-                    ]),
-                )
-            ]),
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(9)),
-                Node::Token(Token::Digit(0)),
-            ])
-        ),
-        Node::Token(Token::Add),
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-    ]);
+    let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
     renderer.draw_all(tree, None);
     assert_eq!(
@@ -175,35 +186,7 @@ fn test_ascii_render() {
     );
 
     // Cursor
-    let tree = Node::Unstructured(vec![
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-        Node::Token(Token::Add),
-        Node::Divide(
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(3)),
-                Node::Token(Token::Digit(4)),
-                Node::Token(Token::Add),
-                Node::Divide(
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(5)),
-                        Node::Token(Token::Digit(6)),
-                    ]),
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(7)),
-                        Node::Token(Token::Digit(8)),
-                    ]),
-                )
-            ]),
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(9)),
-                Node::Token(Token::Digit(0)),
-            ])
-        ),
-        Node::Token(Token::Add),
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-    ]);
+    let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
     renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
     assert_eq!(
@@ -276,4 +259,48 @@ fn test_navigation() {
         result,
         (div_bot_ptr, 1)
     );
+}
+
+#[test]
+fn test_movement() {
+    let mut node = complex_unstructured_expression();
+    let mut nav_path = NavPath::new(vec![0]);
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![1]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 2]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 4]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![4]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![5]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![7]));
+
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![7]));
 }

@@ -340,6 +340,24 @@ impl Node {
         }
     }
 
+    /// Inserts the given node at the cursor position, and moves the cursor accordingly.
+    pub fn insert(&mut self, path: &mut NavPath, new_node: Node) {
+        let (current_node, index) = self.navigate(&mut path.to_navigator());
+
+        current_node.unwrap_unstructured_mut().insert(index, new_node.clone());
+
+        match new_node {
+            Node::Sqrt(_) | Node::Divide(_, _) => {
+                // Move into the new node
+                path.push(0);
+                path.push(0);
+            },
+
+            // Just move past it
+            _ => path.offset(1),
+        }
+    }
+
     /// Panics if this node is not unstructured, and returns the children of
     /// the node.
     pub fn unwrap_unstructured(&self) -> &Vec<Node> {

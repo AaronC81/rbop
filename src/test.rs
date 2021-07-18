@@ -339,3 +339,43 @@ fn test_movement() {
     node.move_left(&mut nav_path);
     assert_eq!(nav_path, NavPath::new(vec![0]));
 }
+
+#[test]
+fn test_modification() {
+    let mut node = complex_unstructured_expression();
+    let mut nav_path = NavPath::new(vec![0]);
+
+    node.insert(&mut nav_path, Node::Token(Token::Digit(1)));
+    assert_eq!(nav_path, NavPath::new(vec![1]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![4, 0, 0]));
+
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![4, 0, 2]));
+
+    node.insert(&mut nav_path, Node::Token(Token::Add));
+    node.insert(&mut nav_path, Node::Divide(
+        box Node::Unstructured(vec![]),
+        box Node::Unstructured(vec![]),
+    ));
+    node.insert(&mut nav_path, Node::Token(Token::Digit(9)));
+    assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));
+
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(node, Some(&mut nav_path.to_navigator()));
+    assert_eq!(
+        renderer.lines,
+        vec![
+            "       9| 56   ",
+            "    34+--+--   ",
+            "          78   ",
+            "112+--------+12",
+            "       90      "
+        ],
+    );
+}

@@ -270,7 +270,7 @@ impl Node {
     pub fn move_right(&mut self, path: &mut NavPath) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.navigate(&mut path.to_navigator());
-        let children = current_node.unwrap_unstructured();
+        let children = current_node.unwrap_unstructured_mut();
 
         // Are we at the end of this node?
         if index == children.len() {
@@ -303,9 +303,56 @@ impl Node {
         }
     }
 
+    // Modifies the given navigation path to move the cursor left.
+    pub fn move_left(&mut self, path: &mut NavPath) {
+        // Fetch the node which we're navigating within
+        let (current_node, index) = self.navigate(&mut path.to_navigator());
+        let children = current_node.unwrap_unstructured_mut();
+
+        // Are we at the start of this node?
+        if index == 0 {
+            // Is there another node above this one?
+            if !path.root() {
+                // Move out of the unstructured and the structural node above it
+                path.pop(2);
+
+                // The index is "before" the node, so no need to offset
+            } else {
+                // There's nowhere to go, just don't move
+            }
+        } else {
+            // Move left - what's there?
+            path.offset(-1);
+            let left_child = &children[index - 1];
+
+            match left_child {
+                // Structured nodes
+                Node::Sqrt(n) | Node::Divide(n, _) => {
+                    // Navigate into its first/only slot, and start at the first item of the
+                    // unstructured
+                    path.push(0);
+                    path.push(n.as_ref().unwrap_unstructured().len());
+                },
+
+                // Anything else, nothing special needed
+                _ => (),
+            }
+        }
+    }
+
     /// Panics if this node is not unstructured, and returns the children of
     /// the node.
-    pub fn unwrap_unstructured(&mut self) -> &mut Vec<Node> {
+    pub fn unwrap_unstructured(&self) -> &Vec<Node> {
+        if let Node::Unstructured(children) = self {
+            children
+        } else {
+            panic!("expected node to be unstructured")
+        }
+    }
+
+    /// Panics if this node is not unstructured, and returns the children of
+    /// the node.
+    pub fn unwrap_unstructured_mut(&mut self) -> &mut Vec<Node> {
         if let Node::Unstructured(children) = self {
             children
         } else {

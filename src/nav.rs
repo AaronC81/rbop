@@ -36,8 +36,8 @@ impl NavPath {
 
     /// Adds n to the final entry of this path. This will not navigate deep into node structures,
     /// you should use `Node`'s `move_x` methods for this.
-    pub fn offset(&mut self, n: usize) {
-        *self.path.last_mut().unwrap() += n;
+    pub fn offset(&mut self, n: isize) {
+        *self.path.last_mut().unwrap() = (*self.path.last().unwrap() as isize + n) as usize;
     }
 }
 

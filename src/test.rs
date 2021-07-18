@@ -266,6 +266,7 @@ fn test_movement() {
     let mut node = complex_unstructured_expression();
     let mut nav_path = NavPath::new(vec![0]);
 
+    // Go all the way to the right
     node.move_right(&mut nav_path);
     assert_eq!(nav_path, NavPath::new(vec![1]));
 
@@ -303,4 +304,38 @@ fn test_movement() {
 
     node.move_right(&mut nav_path);
     assert_eq!(nav_path, NavPath::new(vec![7]));
+
+    // Now go back to the left
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![6]));
+
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![4]));
+
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 4]));
+
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 2]));
+
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
+
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
+
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
+
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3]));
+
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![0]));
 }

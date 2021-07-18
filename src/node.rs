@@ -229,7 +229,7 @@ impl Node {
     /// The navigation path will always terminate on an unstructured node, so
     /// the final index in the path will be an index into the unstructured
     /// node's items.
-    pub fn navigate_mut(&mut self, path: &mut NavPathNavigator) -> (&mut Node, usize) {
+    pub fn navigate(&mut self, path: &mut NavPathNavigator) -> (&mut Node, usize) {
         if path.here() {
             if !matches!(self, &mut Node::Unstructured(_)) {
                 panic!("navigation path must end on unstructured node");
@@ -246,16 +246,16 @@ impl Node {
                     panic!("index out of range for sqrt navigation")
                 }
 
-                inner.navigate_mut(step_path)
+                inner.navigate(step_path)
             },
             Node::Unstructured(items) => {
-                items[next_index].navigate_mut(step_path)
+                items[next_index].navigate(step_path)
             },
             Node::Divide(top, bottom) => {
                 if next_index == 0 {
-                    top.navigate_mut(step_path)
+                    top.navigate(step_path)
                 } else if next_index == 1 {
-                    bottom.navigate_mut(step_path)
+                    bottom.navigate(step_path)
                 } else {
                     panic!("index out of range for divide navigation")
                 }

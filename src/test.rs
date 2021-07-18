@@ -159,7 +159,7 @@ fn test_navigation() {
     // Path 1: beginning
     let mut path = NavPath::new(vec![0]);
     let result = {
-        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let (node, i) = unstructured.navigate(&mut path.to_navigator());
         let node_ptr: *mut Node = node;
         (node_ptr, i)
     };
@@ -171,7 +171,7 @@ fn test_navigation() {
     // Path 2: middle
     let mut path = NavPath::new(vec![3]);
     let result = {
-        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let (node, i) = unstructured.navigate(&mut path.to_navigator());
         let node_ptr: *mut Node = node;
         (node_ptr, i)
     };
@@ -183,7 +183,7 @@ fn test_navigation() {
     // Path 3: nested
     let mut path = NavPath::new(vec![6, 1, 1]);
     let result = {
-        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let (node, i) = unstructured.navigate(&mut path.to_navigator());
         let node_ptr: *mut Node = node;
         (node_ptr, i)
     };

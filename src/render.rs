@@ -331,11 +331,28 @@ pub trait Renderer {
 
                 // If the cursor is here, insert it
                 if let Some(idx) = cursorInsertionIndex {
-                    // TODO: height should be max of adjacents
+                    let height = if layouts.is_empty() {
+                        // Our default size will be that of the digit 0
+                        LayoutBlock::from_glyph(self, Glyph::Digit {
+                            number: 0
+                        }).area(self).height
+                    } else if idx == 0 {
+                        layouts[idx].area(self).height
+                    } else if idx == layouts.len() {
+                        layouts[idx - 1].area(self).height
+                    } else {
+                        let after = &layouts[idx];
+                        let before = &layouts[idx - 1];
+
+                        max(
+                            after.area(self).height,
+                            before.area(self).height
+                        )
+                    };
                     layouts.insert(
                         idx, 
                         LayoutBlock::from_glyph(self, Glyph::Cursor {
-                            height: 1,
+                            height,
                         })
                     )
                 }

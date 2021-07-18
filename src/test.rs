@@ -185,7 +185,7 @@ fn test_ascii_render() {
         ],
     );
 
-    // Cursor
+    // Basic cursor
     let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
     renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
@@ -195,6 +195,21 @@ fn test_ascii_render() {
             "      56    ",
             "   34+---   ",
             "      7|8   ",
+            "12+------+12",
+            "     90     "
+        ],
+    );
+
+    // Cursor matches adjacent size
+    let tree = complex_unstructured_expression();
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3]).to_navigator()));
+    assert_eq!(
+        renderer.lines,
+        vec![
+            "      |56   ",
+            "   34+|--   ",
+            "      |78   ",
             "12+------+12",
             "     90     "
         ],

@@ -1,3 +1,4 @@
+use crate::nav::NavPath;
 use crate::{Node, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
 
@@ -129,5 +130,65 @@ fn test_ascii_render() {
             "12+-----+12",
             "    90     "
         ],
+    );
+}
+
+#[test]
+fn test_navigation() {
+    let mut div_bot = box Node::Unstructured(vec![
+        Node::Token(Token::Digit(7)),
+        Node::Token(Token::Digit(8)),
+    ]);
+    let div_bot_ptr = &mut *div_bot as *mut Node;
+    let mut unstructured = Node::Unstructured(vec![
+        Node::Token(Token::Digit(1)),
+        Node::Token(Token::Digit(2)),
+        Node::Token(Token::Multiply),
+        Node::Token(Token::Digit(3)),
+        Node::Token(Token::Digit(4)),
+        Node::Token(Token::Add),
+        Node::Divide(
+            box Node::Unstructured(vec![
+                Node::Token(Token::Digit(5)),
+                Node::Token(Token::Digit(6)),
+            ]),
+            div_bot,
+        ),
+    ]);
+
+    // Path 1: beginning
+    let mut path = NavPath::new(vec![0]);
+    let result = {
+        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let node_ptr: *mut Node = node;
+        (node_ptr, i)
+    };
+    assert_eq!(
+        result,
+        (&mut unstructured as *mut Node, 0)
+    );
+
+    // Path 2: middle
+    let mut path = NavPath::new(vec![3]);
+    let result = {
+        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let node_ptr: *mut Node = node;
+        (node_ptr, i)
+    };
+    assert_eq!(
+        result,
+        (&mut unstructured as *mut Node, 3)
+    );
+
+    // Path 3: nested
+    let mut path = NavPath::new(vec![6, 1, 1]);
+    let result = {
+        let (node, i) = unstructured.navigate_mut(&mut path.to_navigator());
+        let node_ptr: *mut Node = node;
+        (node_ptr, i)
+    };
+    assert_eq!(
+        result,
+        (div_bot_ptr, 1)
     );
 }

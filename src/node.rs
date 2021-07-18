@@ -1,6 +1,8 @@
 use std::fmt;
 use std::error::Error;
 
+use crate::nav::{NavPath, NavPathNavigator};
+
 pub type Number = i128;
 
 pub struct Parser<'a> {
@@ -220,5 +222,51 @@ impl Node {
                 "attempting to disambiguate non-upgraded tree".into()
             ))
         })
+    }
+
+    /// Given a navigation path, returns the node from following that path, and
+    /// the index into that node.
+    /// The navigation path will always terminate on an unstructured node, so
+    /// the final index in the path will be an index into the unstructured
+    /// node's items.
+    pub fn navigate_mut(&mut self, path: &mut NavPathNavigator) -> (&mut Node, usize) {
+        if path.here() {
+            if !matches!(self, &mut Node::Unstructured(_)) {
+                panic!("navigation path must end on unstructured node");
+            }
+            return (self, path.next())
+        }
+
+        let next_index = path.next();
+        let step_path = &mut path.step();
+
+        match self {
+            Node::Sqrt(inner) => {
+                if next_index != 0 {
+                    panic!("index out of range for sqrt navigation")
+                }
+
+                inner.navigate_mut(step_path)
+            },
+            Node::Unstructured(items) => {
+                items[next_index].navigate_mut(step_path)
+            },
+            Node::Divide(top, bottom) => {
+                if next_index == 0 {
+                    top.navigate_mut(step_path)
+                } else if next_index == 1 {
+                    bottom.navigate_mut(step_path)
+                } else {
+                    panic!("index out of range for divide navigation")
+                }
+            },
+            
+            Node::Number(_) | Node::Token(_) => panic!("cannot navigate into this"),
+
+            Node::Add(_, _)
+            | Node::Subtract(_, _)
+            | Node::Multiply(_, _)
+            | Node::Parentheses(_) => panic!("cannot navigate into structured node"),
+        }
     }
 }

@@ -3,6 +3,7 @@
 #![feature(or_patterns)]
 
 mod node;
+mod nav;
 mod test;
 mod render;
 mod renderers;

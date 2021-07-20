@@ -41,6 +41,14 @@ impl NavPath {
     }
 }
 
+impl std::ops::Index<usize> for NavPath {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.path[index]
+    }
+}
+
 pub struct NavPathNavigator<'a> {
     path: &'a mut NavPath,
     index: usize,

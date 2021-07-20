@@ -230,6 +230,14 @@ impl Node {
     /// the final index in the path will be an index into the unstructured
     /// node's items.
     pub fn navigate(&mut self, path: &mut NavPathNavigator) -> (&mut Node, usize) {
+        self.navigate_trace(path, |_| {})
+    }
+
+    pub fn navigate_trace<F>(&mut self, path: &mut NavPathNavigator, mut trace: F) -> (&mut Node, usize) 
+        where F : FnMut(&mut Node)
+    {
+        trace(self);
+
         if path.here() {
             if !matches!(self, &mut Node::Unstructured(_)) {
                 panic!("navigation path must end on unstructured node");
@@ -246,16 +254,16 @@ impl Node {
                     panic!("index out of range for sqrt navigation")
                 }
 
-                inner.navigate(step_path)
+                inner.navigate_trace(step_path, trace)
             },
             Node::Unstructured(items) => {
-                items[next_index].navigate(step_path)
+                items[next_index].navigate_trace(step_path, trace)
             },
             Node::Divide(top, bottom) => {
                 if next_index == 0 {
-                    top.navigate(step_path)
+                    top.navigate_trace(step_path, trace)
                 } else if next_index == 1 {
-                    bottom.navigate(step_path)
+                    bottom.navigate_trace(step_path, trace)
                 } else {
                     panic!("index out of range for divide navigation")
                 }
@@ -336,6 +344,45 @@ impl Node {
 
                 // Anything else, nothing special needed
                 _ => (),
+            }
+        }
+    }
+
+    // Modifies the given navigation path to move the cursor down.
+    // TODO: tests!
+    pub fn move_down(&mut self, path: &mut NavPath) {
+        // Say you're in a sqrt at the top of a fraction, and you press down, you'd expect it to
+        // move to the bottom of the fraction.
+        // That's why we need to check up the entire nav path, looking for fractions.
+
+        // Use navigate_trace to build a tree of navigation path items
+        // We can clone them, since we aren't modifying them - just checking what they are
+        let mut nav_items = vec![];
+        self.navigate_trace(
+            &mut path.to_navigator(), 
+            |item: &mut Node| nav_items.push(item.clone())
+        );
+
+        // Iterate reversed, since we're looking from the inside out
+        for (i, item) in nav_items.iter().rev().enumerate() {
+            // Division is currently the only thing with vertical movement
+            if let Node::Divide(_, _) = item {
+                // Work out the true index of this in the nav tree.
+                // Remember, we're going backwards!
+                let true_index = (nav_items.len() - i) - 1;
+
+                // Are we on the top?
+                if path[true_index] == 0 {
+                    // Yes!
+                    // Pop up to and including this item, then move to the bottom and into the
+                    // start of its unstructured node
+                    path.pop(i + 1);
+                    path.push(1);
+                    path.push(0);
+                    break;
+                } else {
+                    // Keep looking
+                }
             }
         }
     }

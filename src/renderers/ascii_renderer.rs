@@ -81,11 +81,11 @@ impl Renderer for AsciiRenderer {
                     x: point.x,
                     y: point.y + inner_area.height,
                 });
-                for dy in 1..inner_area.height {
+                for dy in 1..=inner_area.height {
                     self.put_char('|', point.dx(1).dy(dy as i64));
                 }
                 self.put_char('.', point.dx(1));
-                for dx in 2..inner_area.width {
+                for dx in 2..(2+inner_area.width) {
                     self.put_char('-', point.dx(dx as i64));
                 }
             },

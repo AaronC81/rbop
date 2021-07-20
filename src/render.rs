@@ -200,6 +200,26 @@ impl LayoutBlock {
         }
     }
 
+    /// Merge the the glyphs of two layout blocks exactly, without moving them.
+    fn merge_in_place(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+        let glyphs =
+            // Re-align the lesser-baselined glyphs
+            self.glyphs
+            .iter()
+            .cloned()
+            // Chain with the unmodified greater-baselined glyphs
+            .chain(other.glyphs.iter().cloned())
+            .collect::<Vec<_>>();
+
+        LayoutBlock {
+            glyphs,
+            baseline: match baseline {
+                MergeBaseline::SelfAsBaseline => self.baseline,
+                MergeBaseline::OtherAsBaseline => other.baseline,
+            },
+        }
+    }
+
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly to the right of another layout block.
     fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
@@ -285,6 +305,39 @@ pub trait Renderer {
                 top_layout
                     .merge_along_vertical_centre(self, &line_layout, MergeBaseline::OtherAsBaseline)
                     .merge_along_vertical_centre(self, &bottom_layout, MergeBaseline::SelfAsBaseline)
+            }
+
+            Node::Sqrt(inner) => {
+                // Lay out the inner item first
+                let mut path = if let Some(p) = path {
+                    if p.next() == 0 {
+                        Some(p.step())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                
+                let inner_layout = self.layout(inner, (&mut path).as_mut());
+                let inner_area = inner_layout.area(self);
+
+                // Get glyph size for the sqrt symbol
+                let sqrt_symbol_layout = LayoutBlock::from_glyph(self, Glyph::Sqrt {
+                    inner_area
+                });
+
+                // We assume that the inner layout goes in the very bottom right, so work out the
+                // offset required based on the difference of the two areas
+                let x_offset = sqrt_symbol_layout.area(self).width - inner_layout.area(self).width;
+                let y_offset = sqrt_symbol_layout.area(self).height - inner_layout.area(self).height;
+
+                // Merge the two
+                sqrt_symbol_layout.merge_in_place(
+                    self, 
+                    &inner_layout.offset(x_offset, y_offset),
+                    MergeBaseline::OtherAsBaseline
+                )
             }
 
             Node::Token(token) => LayoutBlock::from_glyph(self, (*token).into()),

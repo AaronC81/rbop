@@ -2,6 +2,7 @@
 
 use rbop::Token;
 use rbop::{renderers::AsciiRenderer, Node, nav::NavPath, render::Renderer};
+use core::time;
 use std::error::Error;
 use std::io::{Write, stdin, stdout};
 use termion::event::Key;
@@ -9,6 +10,12 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    std::panic::set_hook(box |info| {
+        println!("Panic!");
+        println!("{:?}", info.payload().downcast_ref::<&str>());
+        std::thread::sleep(time::Duration::from_secs(2));
+    });
+        
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode()?;
 
@@ -31,8 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 box Node::Unstructured(vec![]),
                 box Node::Unstructured(vec![]),
             )),
-            
-            // TODO: sqrt broken
+
             Key::Char('s') => node.insert(&mut nav_path, Node::Sqrt(
                 box Node::Unstructured(vec![]),
             )),

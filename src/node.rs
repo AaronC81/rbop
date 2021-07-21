@@ -400,13 +400,11 @@ impl Node {
     // For a more precise estimate, this movement method could take a renderer and work out widths.
     
     // Modifies the given navigation path to move the cursor down.
-    // TODO: tests!
     pub fn move_down(&mut self, path: &mut NavPath) {
         self.move_vertically(path, MoveVerticalDirection::Down);
     }
 
     // Modifies the given navigation path to move the cursor up.
-    // TODO: tests!
     pub fn move_up(&mut self, path: &mut NavPath) {
         self.move_vertically(path, MoveVerticalDirection::Up);
     }

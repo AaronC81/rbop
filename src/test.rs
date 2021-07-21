@@ -353,6 +353,38 @@ fn test_movement() {
     node.move_left(&mut nav_path);
     node.move_left(&mut nav_path);
     assert_eq!(nav_path, NavPath::new(vec![0]));
+
+    // Move into a fraction to test vertical movement
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
+    
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
+    
+    // Now in a fraction, test vertical movement
+    // TODO: when vertical movement behaves a bit more sensible wrt cursor positioning, will have
+    // to update these tests
+    node.move_up(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
+
+    node.move_down(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 1, 0]));
+
+    node.move_up(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
+
+    node.move_down(&mut nav_path);
+    node.move_down(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 1, 0]));
+
+    node.move_up(&mut nav_path);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
 }
 
 #[test]

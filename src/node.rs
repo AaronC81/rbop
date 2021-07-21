@@ -279,7 +279,7 @@ impl Node {
         }
     }
 
-    // Modifies the given navigation path to move the cursor right.
+    /// Modifies the given navigation path to move the cursor right.
     pub fn move_right(&mut self, path: &mut NavPath) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.navigate(&mut path.to_navigator());
@@ -316,7 +316,7 @@ impl Node {
         }
     }
 
-    // Modifies the given navigation path to move the cursor left.
+    /// Modifies the given navigation path to move the cursor left.
     pub fn move_left(&mut self, path: &mut NavPath) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.navigate(&mut path.to_navigator());
@@ -399,12 +399,12 @@ impl Node {
     // where to go. We could try to interpolate from the number of items? This is a bit tricky...
     // For a more precise estimate, this movement method could take a renderer and work out widths.
     
-    // Modifies the given navigation path to move the cursor down.
+    /// Modifies the given navigation path to move the cursor down.
     pub fn move_down(&mut self, path: &mut NavPath) {
         self.move_vertically(path, MoveVerticalDirection::Down);
     }
 
-    // Modifies the given navigation path to move the cursor up.
+    /// Modifies the given navigation path to move the cursor up.
     pub fn move_up(&mut self, path: &mut NavPath) {
         self.move_vertically(path, MoveVerticalDirection::Up);
     }

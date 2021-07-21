@@ -346,7 +346,7 @@ pub trait Renderer {
                 // We never actually mutate the paths...
                 // Unsafe time!
                 let mut paths = vec![];
-                let mut cursorInsertionIndex = None;
+                let mut cursor_insertion_index = None;
 
                 unsafe {
                     if let Some(p) = path {
@@ -364,7 +364,7 @@ pub trait Renderer {
 
                         // Is the cursor in this element?
                         if p.as_mut().unwrap().here() {
-                            cursorInsertionIndex = Some(p.as_mut().unwrap().next());
+                            cursor_insertion_index = Some(p.as_mut().unwrap().next());
                         }
                     } else {
                         for _ in 0..children.len() {
@@ -383,7 +383,7 @@ pub trait Renderer {
                     .collect::<Vec<_>>();
 
                 // If the cursor is here, insert it
-                if let Some(idx) = cursorInsertionIndex {
+                if let Some(idx) = cursor_insertion_index {
                     let height = if layouts.is_empty() {
                         // Our default size will be that of the digit 0
                         LayoutBlock::from_glyph(self, Glyph::Digit {

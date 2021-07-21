@@ -280,6 +280,7 @@ fn test_navigation() {
 fn test_movement() {
     let mut node = complex_unstructured_expression();
     let mut nav_path = NavPath::new(vec![0]);
+    let mut renderer = AsciiRenderer::default();
 
     // Go all the way to the right
     node.move_right(&mut nav_path);
@@ -368,23 +369,21 @@ fn test_movement() {
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
     
     // Now in a fraction, test vertical movement
-    // TODO: when vertical movement behaves a bit more sensible wrt cursor positioning, will have
-    // to update these tests
-    node.move_up(&mut nav_path);
+    node.move_up(&mut nav_path, &mut renderer);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_down(&mut nav_path);
+    node.move_down(&mut nav_path, &mut renderer);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 1, 0]));
 
-    node.move_up(&mut nav_path);
+    node.move_up(&mut nav_path, &mut renderer);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_down(&mut nav_path);
-    node.move_down(&mut nav_path);
-    assert_eq!(nav_path, NavPath::new(vec![3, 1, 0]));
+    node.move_down(&mut nav_path, &mut renderer);
+    node.move_down(&mut nav_path, &mut renderer);
+    assert_eq!(nav_path, NavPath::new(vec![3, 1, 2]));
 
-    node.move_up(&mut nav_path);
-    assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
+    node.move_up(&mut nav_path, &mut renderer);
+    assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
 }
 
 #[test]

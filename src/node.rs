@@ -1,7 +1,7 @@
 use std::fmt;
 use std::error::Error;
 
-use crate::nav::{NavPath, NavPathNavigator};
+use crate::{nav::{NavPath, NavPathNavigator}, render::Renderer};
 
 pub type Number = i128;
 
@@ -140,7 +140,7 @@ pub enum Node {
     Unstructured(Vec<Node>),
 }
 
-enum MoveVerticalDirection {
+pub enum MoveVerticalDirection {
     Up,
     Down,
 }
@@ -353,7 +353,7 @@ impl Node {
         }
     }
 
-    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection) {
+    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection, renderer: &mut impl Renderer) {
         // Say you're in a sqrt at the top of a fraction, and you press down, you'd expect it to
         // move to the bottom of the fraction.
         // That's why we need to check up the entire nav path, looking for fractions.
@@ -369,7 +369,7 @@ impl Node {
         // Iterate reversed, since we're looking from the inside out
         for (i, item) in nav_items.iter().rev().enumerate() {
             // Division is currently the only thing with vertical movement
-            if let Node::Divide(_, _) = item {
+            if let Node::Divide(top, bottom) = item {
                 // Work out the true index of this in the nav tree.
                 // Remember, we're going backwards!
                 let true_index = (nav_items.len() - i) - 1;
@@ -382,11 +382,17 @@ impl Node {
                 // Are we on the top?
                 if path[true_index] == index_allowing_movement {
                     // Yes!
-                    // Pop up to and including this item, then move to the bottom and into the
-                    // start of its unstructured node
+                    // Determine the index to move to
+                    let match_points = renderer.match_vertical_cursor_points(
+                        top, bottom, direction
+                    );
+                    let new_index = match_points[path[true_index + 1]];
+
+                    // Pop up to and including this item, then move to the bottom and the correct
+                    // new index
                     path.pop(i + 1);
                     path.push(index_to_move_to);
-                    path.push(0);
+                    path.push(new_index);
                     break;
                 } else {
                     // Keep looking
@@ -394,19 +400,15 @@ impl Node {
             }
         }
     }
-
-    // TODO: the vertical movement methods always move to the beginning, rather than figuring out
-    // where to go. We could try to interpolate from the number of items? This is a bit tricky...
-    // For a more precise estimate, this movement method could take a renderer and work out widths.
     
     /// Modifies the given navigation path to move the cursor down.
-    pub fn move_down(&mut self, path: &mut NavPath) {
-        self.move_vertically(path, MoveVerticalDirection::Down);
+    pub fn move_down(&mut self, path: &mut NavPath, renderer: &mut impl Renderer) {
+        self.move_vertically(path, MoveVerticalDirection::Down, renderer);
     }
 
     /// Modifies the given navigation path to move the cursor up.
-    pub fn move_up(&mut self, path: &mut NavPath) {
-        self.move_vertically(path, MoveVerticalDirection::Up);
+    pub fn move_up(&mut self, path: &mut NavPath, renderer: &mut impl Renderer) {
+        self.move_vertically(path, MoveVerticalDirection::Up, renderer);
     }
 
     /// Inserts the given node at the cursor position, and moves the cursor accordingly.

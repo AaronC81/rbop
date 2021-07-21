@@ -12,6 +12,6 @@ pub mod test;
 pub mod render;
 pub mod renderers;
 
-trait Error : alloc::fmt::Display + alloc::fmt::Debug {}
+pub trait Error : alloc::fmt::Display + alloc::fmt::Debug {}
 
 pub use crate::node::{Node, Token};

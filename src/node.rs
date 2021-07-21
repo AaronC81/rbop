@@ -1,7 +1,7 @@
-use std::fmt;
-use std::error::Error;
+use core::fmt;
+use alloc::{boxed::Box, string::String, vec::Vec, vec};
 
-use crate::{nav::{NavPath, NavPathNavigator}, render::Renderer};
+use crate::{Error, nav::{NavPath, NavPathNavigator}, render::Renderer};
 
 pub type Number = i128;
 

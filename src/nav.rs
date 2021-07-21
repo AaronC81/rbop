@@ -1,5 +1,7 @@
 use crate::{Node};
 
+use alloc::vec::Vec;
+
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
 #[derive(PartialEq, Eq, Debug)]
@@ -41,7 +43,7 @@ impl NavPath {
     }
 }
 
-impl std::ops::Index<usize> for NavPath {
+impl core::ops::Index<usize> for NavPath {
     type Output = usize;
 
     fn index(&self, index: usize) -> &Self::Output {

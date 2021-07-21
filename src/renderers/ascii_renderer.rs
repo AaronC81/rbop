@@ -1,4 +1,5 @@
 use crate::render::{Renderer, CalculatedPoint, Area, Glyph};
+use alloc::{vec::Vec, string::{String, ToString}};
 
 #[derive(Default, Clone, Debug)]
 pub struct AsciiRenderer {

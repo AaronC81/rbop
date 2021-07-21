@@ -1,6 +1,7 @@
 use crate::nav::NavPath;
 use crate::{Node, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
+use alloc::vec;
 
 /// ```text
 ///       56    

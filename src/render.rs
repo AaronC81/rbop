@@ -1,4 +1,5 @@
-use std::{alloc::Layout, cmp::max, unimplemented};
+use core::cmp::max;
+use alloc::{vec::Vec, vec, string::ToString};
 use crate::Token;
 
 use crate::Node;
@@ -247,7 +248,7 @@ pub trait Renderer {
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&mut self, tree: &Node, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: std::marker::Sized {        
+    fn layout(&mut self, tree: &Node, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {        
         match tree {
             Node::Number(number) => {
                 // We'll worry about negatives later!
@@ -422,7 +423,7 @@ pub trait Renderer {
     /// the cursor is moving, returns a vec of positions `v` such that moving the cursor from
     /// from position `i` in that direction should put the cursor in position `v[i]` of the other
     /// unstructured node. 
-    fn match_vertical_cursor_points(&mut self, top: &Node, bottom: &Node, direction: node::MoveVerticalDirection) -> Vec<usize> where Self: std::marker::Sized {
+    fn match_vertical_cursor_points(&mut self, top: &Node, bottom: &Node, direction: node::MoveVerticalDirection) -> Vec<usize> where Self: Sized {
         let (from_node, to_node) = match direction {
             node::MoveVerticalDirection::Up => (bottom, top),
             node::MoveVerticalDirection::Down => (top, bottom),
@@ -492,7 +493,7 @@ pub trait Renderer {
     }
 
     /// Initialises the graphics surface and draws a node tree onto it.
-    fn draw_all(&mut self, node: Node, path: Option<&mut NavPathNavigator>) where Self: std::marker::Sized {
+    fn draw_all(&mut self, node: Node, path: Option<&mut NavPathNavigator>) where Self: Sized {
         let layout = self.layout(&node, path);
         let area = layout.area(self);
         self.init(area);
@@ -508,7 +509,7 @@ pub trait Renderer {
     }
 
     /// Calculates layout for a binop, with the operator being the `glyph`.
-    fn layout_binop(&mut self, glyph: Glyph, left: &Node, right: &Node) -> LayoutBlock where Self: std::marker::Sized {
+    fn layout_binop(&mut self, glyph: Glyph, left: &Node, right: &Node) -> LayoutBlock where Self: Sized {
         // The navigation path is only for unstructured nodes, and the structured binops will never
         // appear will an unstructured tree (except divide, which is handled separately), so all
         // paths here are passed as None.
@@ -525,8 +526,7 @@ pub trait Renderer {
     }
 
     /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
-    fn layout_horizontal(&mut self, layouts: &[LayoutBlock]) -> LayoutBlock
-        where Self: std::marker::Sized
+    fn layout_horizontal(&mut self, layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
     {
         let mut block = LayoutBlock::empty();
 

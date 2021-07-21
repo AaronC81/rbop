@@ -1,5 +1,6 @@
 use core::fmt;
 use alloc::{boxed::Box, string::String, vec::Vec, vec};
+use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{Error, nav::{NavPath, NavPathNavigator}, render::Renderer};
 
@@ -20,6 +21,17 @@ impl fmt::Display for NodeError {
 }
 impl Error for NodeError {}
 
+#[derive(Debug, Clone)]
+pub struct MathsError(String);
+
+impl fmt::Display for MathsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl Error for MathsError {}
+
+// TODO: 1 + (1/2) + 3 is not fully consumed, parsing stops after the fraction. Same with sqrt
 impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Node, Box<dyn Error>> {
         self.parse_level1()
@@ -29,12 +41,16 @@ impl<'a> Parser<'a> {
         self.index += 1;
     }
 
-    fn current(&mut self) -> &'a Node {
-        &self.nodes[self.index]
+    fn current(&mut self) -> Option<&'a Node> {
+        if self.index < self.nodes.len() {
+            Some(&self.nodes[self.index])
+        } else {
+            None
+        }
     }
 
     fn current_token(&mut self) -> Option<Token> {
-        if let Node::Token(t) = self.current() {
+        if let Some(Node::Token(t)) = self.current() {
             Some(*t)
         } else {
             None
@@ -109,9 +125,15 @@ impl<'a> Parser<'a> {
             }
 
             Ok(Node::Number(number))
-        } else if let &Node::Number(n) = self.current() {
+        } else if let Some(Node::Number(_)) = self.current() {
             // This is already a number, brilliant!
-            Ok(self.current().clone())
+            Ok(self.current().unwrap().clone())
+        } else if let Some(Node::Divide(a, b)) = self.current() {
+            // Divisions can appear in unstructured nodes - upgrade the children
+            Ok(Node::Divide(box a.upgrade()?, box b.upgrade()?))
+        } else if let Some(Node::Sqrt(n)) = self.current() {
+            // Sqrt can appear in unstructured nodes - upgrade the child
+            Ok(Node::Sqrt(box n.upgrade()?))
         } else {
             Err(box NodeError("expected a number".into()))
         }
@@ -445,6 +467,23 @@ impl Node {
                 self.move_right(path);
                 self.delete(path);
             }
+        }
+    }
+
+    // TODO: tests
+    pub fn evaluate(&self) -> Result<Decimal, Box<dyn Error>> {
+        match self {
+            Node::Number(n) => Ok((*n).into()),
+            Node::Sqrt(inner) =>
+                inner.evaluate()?.sqrt().ok_or(box MathsError("illegal sqrt".into())),
+            Node::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
+            Node::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
+            Node::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
+            Node::Divide(a, b) => Ok(a.evaluate()? / b.evaluate()?),
+            Node::Parentheses(inner) => inner.evaluate(),
+
+            Node::Token(_) | Node::Unstructured(_) =>
+                Err(box NodeError("cannot evaluate unstructured nodes".into())),
         }
     }
 

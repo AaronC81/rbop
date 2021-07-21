@@ -1,8 +1,10 @@
 #![feature(box_syntax)]
+#![feature(backtrace)]
 
 use rbop::Token;
 use rbop::{renderers::AsciiRenderer, Node, nav::NavPath, render::Renderer};
 use core::time;
+use std::backtrace::Backtrace;
 use std::error::Error;
 use std::io::{Write, stdin, stdout};
 use termion::event::Key;
@@ -13,6 +15,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::panic::set_hook(box |info| {
         println!("Panic!");
         println!("{:?}", info.payload().downcast_ref::<&str>());
+
+        println!("{}", Backtrace::force_capture());
+
         std::thread::sleep(time::Duration::from_secs(2));
     });
         
@@ -63,6 +68,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         for line in renderer.lines.iter() {
             write!(stdout, "{}\r\n", line)?;
         }
+
+        write!(stdout, "\r\n===================================\r\n")?;
+
+        match node.upgrade() {
+            Ok(upgraded) => match upgraded.evaluate() {
+                Ok(result) => write!(stdout, "{}", result)?,
+                Err(err) => write!(stdout, "Evaluation error: {}", err)?,
+            },
+            Err(err) => write!(stdout, "Parse error: {}", err)?,
+        };
 
         stdout.flush()?;
     };

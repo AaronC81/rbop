@@ -140,6 +140,11 @@ pub enum Node {
     Unstructured(Vec<Node>),
 }
 
+enum MoveVerticalDirection {
+    Up,
+    Down,
+}
+
 impl Node {
     /// Returns true if this node is `Add` or `Subtract`.
     pub fn add_or_sub(&self) -> bool {
@@ -348,9 +353,7 @@ impl Node {
         }
     }
 
-    // Modifies the given navigation path to move the cursor down.
-    // TODO: tests!
-    pub fn move_down(&mut self, path: &mut NavPath) {
+    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection) {
         // Say you're in a sqrt at the top of a fraction, and you press down, you'd expect it to
         // move to the bottom of the fraction.
         // That's why we need to check up the entire nav path, looking for fractions.
@@ -371,13 +374,18 @@ impl Node {
                 // Remember, we're going backwards!
                 let true_index = (nav_items.len() - i) - 1;
 
+                let (index_allowing_movement, index_to_move_to) = match direction {
+                    MoveVerticalDirection::Up => (1, 0),
+                    MoveVerticalDirection::Down => (0, 1),
+                };
+
                 // Are we on the top?
-                if path[true_index] == 0 {
+                if path[true_index] == index_allowing_movement {
                     // Yes!
                     // Pop up to and including this item, then move to the bottom and into the
                     // start of its unstructured node
                     path.pop(i + 1);
-                    path.push(1);
+                    path.push(index_to_move_to);
                     path.push(0);
                     break;
                 } else {
@@ -385,6 +393,22 @@ impl Node {
                 }
             }
         }
+    }
+
+    // TODO: the vertical movement methods always move to the beginning, rather than figuring out
+    // where to go. We could try to interpolate from the number of items? This is a bit tricky...
+    // For a more precise estimate, this movement method could take a renderer and work out widths.
+    
+    // Modifies the given navigation path to move the cursor down.
+    // TODO: tests!
+    pub fn move_down(&mut self, path: &mut NavPath) {
+        self.move_vertically(path, MoveVerticalDirection::Down);
+    }
+
+    // Modifies the given navigation path to move the cursor up.
+    // TODO: tests!
+    pub fn move_up(&mut self, path: &mut NavPath) {
+        self.move_vertically(path, MoveVerticalDirection::Up);
     }
 
     /// Inserts the given node at the cursor position, and moves the cursor accordingly.

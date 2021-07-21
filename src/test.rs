@@ -414,7 +414,7 @@ fn test_modification() {
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));
 
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(node, Some(&mut nav_path.to_navigator()));
+    renderer.draw_all(node.clone(), Some(&mut nav_path.to_navigator()));
     assert_eq!(
         renderer.lines,
         vec![
@@ -423,6 +423,23 @@ fn test_modification() {
             "          78   ",
             "112+--------+12",
             "       90      "
+        ],
+    );
+
+    // Now try deleting some bits
+    node.delete(&mut nav_path);
+    node.delete(&mut nav_path);
+    node.delete(&mut nav_path);
+
+    renderer.draw_all(node.clone(), Some(&mut nav_path.to_navigator()));
+    assert_eq!(
+        renderer.lines,
+        vec![
+            "        56   ",
+            "    34|+--   ",
+            "        78   ",
+            "112+------+12",
+            "      90     "
         ],
     );
 }

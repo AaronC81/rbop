@@ -47,6 +47,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             Key::Right => node.move_right(&mut nav_path),
             Key::Down => node.move_down(&mut nav_path),
             Key::Up => node.move_up(&mut nav_path),
+
+            Key::Backspace => node.delete(&mut nav_path),
             _ => (),
         }
 

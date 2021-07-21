@@ -427,6 +427,25 @@ impl Node {
         }
     }
 
+    /// Deletes the item behind the cursor.
+    pub fn delete(&mut self, path: &mut NavPath) {
+        let (current_node, index) = self.navigate(&mut path.to_navigator());
+
+        if index > 0 {
+            // Delete if there is something behind the cursor
+            current_node.unwrap_unstructured_mut().remove(index - 1);
+            path.offset(-1);
+        } else {
+            // Are we in a container?
+            if !path.root() {
+                // Move right and delete, to delete this item
+                // (Assumes containers have no horizontal slots)
+                self.move_right(path);
+                self.delete(path);
+            }
+        }
+    }
+
     /// Panics if this node is not unstructured, and returns the children of
     /// the node.
     pub fn unwrap_unstructured(&self) -> &Vec<Node> {

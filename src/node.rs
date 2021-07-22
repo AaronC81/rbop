@@ -31,7 +31,6 @@ impl fmt::Display for MathsError {
 }
 impl Error for MathsError {}
 
-// TODO: 1 + (1/2) + 3 is not fully consumed, parsing stops after the fraction. Same with sqrt
 impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Node, Box<dyn Error>> {
         self.parse_level1()
@@ -125,17 +124,20 @@ impl<'a> Parser<'a> {
             }
 
             Ok(Node::Number(number))
-        } else if let Some(Node::Number(_)) = self.current() {
+        } else if let Some(Node::Number(n)) = self.current() {
             // This is already a number, brilliant!
-            Ok(self.current().unwrap().clone())
+            self.advance();
+            Ok(Node::Number(*n))
         } else if let Some(Node::Divide(a, b)) = self.current() {
             // Divisions can appear in unstructured nodes - upgrade the children
+            self.advance();
             Ok(Node::Divide(box a.upgrade()?, box b.upgrade()?))
         } else if let Some(Node::Sqrt(n)) = self.current() {
             // Sqrt can appear in unstructured nodes - upgrade the child
+            self.advance();
             Ok(Node::Sqrt(box n.upgrade()?))
         } else {
-            Err(box NodeError("expected a number".into()))
+            Err(box NodeError("expected a unit".into()))
         }
     }
 }

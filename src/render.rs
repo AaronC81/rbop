@@ -1,10 +1,10 @@
 use core::cmp::max;
 use alloc::{vec::Vec, vec, string::ToString};
-use crate::Token;
+use crate::{StructuredNode, Token};
 
-use crate::Node;
 use crate::nav::NavPathNavigator;
 use crate::node;
+use crate::node::unstructured::MoveVerticalDirection;
 
 pub type Dimension = u64;
 
@@ -248,9 +248,9 @@ pub trait Renderer {
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&mut self, tree: &Node, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {        
+    fn layout(&mut self, tree: &StructuredNode, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {        
         match tree {
-            Node::Number(number) => {
+            StructuredNode::Number(number) => {
                 // We'll worry about negatives later!
                 if *number < 0 { panic!("negative numbers not supported") }
 
@@ -264,11 +264,11 @@ pub trait Renderer {
                 self.layout_horizontal(&glyph_layouts[..])
             },
 
-            Node::Add(left, right) => self.layout_binop(Glyph::Add, left, right),
-            Node::Subtract(left, right) => self.layout_binop(Glyph::Subtract, left, right),
-            Node::Multiply(left, right) => self.layout_binop(Glyph::Multiply, left, right),
+            StructuredNode::Add(left, right) => self.layout_binop(Glyph::Add, left, right),
+            StructuredNode::Subtract(left, right) => self.layout_binop(Glyph::Subtract, left, right),
+            StructuredNode::Multiply(left, right) => self.layout_binop(Glyph::Multiply, left, right),
 
-            Node::Divide(top, bottom) => {
+            StructuredNode::Divide(top, bottom) => {
                 let (mut top_path, mut bottom_path) = {
                     if let Some(p) = path {
                         if p.next() == 0 {
@@ -309,7 +309,7 @@ pub trait Renderer {
                     .merge_along_vertical_centre(self, &bottom_layout, MergeBaseline::SelfAsBaseline)
             }
 
-            Node::Sqrt(inner) => {
+            StructuredNode::Sqrt(inner) => {
                 // Lay out the inner item first
                 let mut path = if let Some(p) = path {
                     if p.next() == 0 {
@@ -423,10 +423,10 @@ pub trait Renderer {
     /// the cursor is moving, returns a vec of positions `v` such that moving the cursor from
     /// from position `i` in that direction should put the cursor in position `v[i]` of the other
     /// unstructured node. 
-    fn match_vertical_cursor_points(&mut self, top: &Node, bottom: &Node, direction: node::MoveVerticalDirection) -> Vec<usize> where Self: Sized {
+    fn match_vertical_cursor_points(&mut self, top: &Node, bottom: &Node, direction: MoveVerticalDirection) -> Vec<usize> where Self: Sized {
         let (from_node, to_node) = match direction {
-            node::MoveVerticalDirection::Up => (bottom, top),
-            node::MoveVerticalDirection::Down => (top, bottom),
+            MoveVerticalDirection::Up => (bottom, top),
+            MoveVerticalDirection::Down => (top, bottom),
         };
 
         // Render both nodes

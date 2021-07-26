@@ -3,6 +3,9 @@ name = "rbop"
 version = "0.1.0"
 authors = ["Aaron Christiansen <aaronc20000@gmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/AaronC81/rbop"
+repository = "https://github.com/AaronC81/rbop"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

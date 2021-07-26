@@ -1,5 +1,7 @@
 # rbop
 
+![Crates.io](https://img.shields.io/crates/v/rbop)
+
 rbop (**R**ust **B**inary **Op**erations) is a framework for implementing intuitive mathematical
 expression editors.
 

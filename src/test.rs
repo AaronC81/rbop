@@ -1,7 +1,10 @@
+use crate::node::unstructured::{Navigable, UnstructuredNodeRoot, Upgradable};
+use crate::{UnstructuredItem, UnstructuredNodeList};
 use crate::nav::NavPath;
-use crate::{Node, Token, render::Renderer};
+use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
-use alloc::vec;
+use alloc::string::{String, ToString};
+use alloc::{vec, vec::Vec};
 
 /// ```text
 ///       56    
@@ -10,64 +13,64 @@ use alloc::vec;
 /// 12+-----+12
 ///     90  
 /// ```   
-fn complex_unstructured_expression() -> Node {
-    Node::Unstructured(vec![
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-        Node::Token(Token::Add),
-        Node::Divide(
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(3)),
-                Node::Token(Token::Digit(4)),
-                Node::Token(Token::Add),
-                Node::Divide(
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(5)),
-                        Node::Token(Token::Digit(6)),
-                    ]),
-                    box Node::Unstructured(vec![
-                        Node::Token(Token::Digit(7)),
-                        Node::Token(Token::Digit(8)),
-                    ]),
-                )
-            ]),
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(9)),
-                Node::Token(Token::Digit(0)),
-            ])
+fn complex_unstructured_expression() -> UnstructuredNodeRoot {
+    UnstructuredNodeRoot { root: UnstructuredNodeList { items: vec![ 
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+        UnstructuredNode::Token(Token::Add),
+        UnstructuredNode::Fraction(
+            UnstructuredNodeList { items: vec![
+                UnstructuredNode::Token(Token::Digit(3)),
+                UnstructuredNode::Token(Token::Digit(4)),
+                UnstructuredNode::Token(Token::Add),
+                UnstructuredNode::Fraction(
+                    UnstructuredNodeList { items: vec![
+                        UnstructuredNode::Token(Token::Digit(5)),
+                        UnstructuredNode::Token(Token::Digit(6)),        
+                    ] },        
+                    UnstructuredNodeList { items: vec![
+                        UnstructuredNode::Token(Token::Digit(7)),
+                        UnstructuredNode::Token(Token::Digit(8)),        
+                    ] },
+                ),        
+            ] },
+            UnstructuredNodeList { items: vec![
+                UnstructuredNode::Token(Token::Digit(9)),
+                UnstructuredNode::Token(Token::Digit(0)),        
+            ] },
         ),
-        Node::Token(Token::Add),
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-    ])
+        UnstructuredNode::Token(Token::Add),
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+    ] } }
 }
 
 #[test]
 fn test_upgrade() {
-    let unstructured = Node::Unstructured(vec![
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-        Node::Token(Token::Multiply),
-        Node::Token(Token::Digit(3)),
-        Node::Token(Token::Digit(4)),
-        Node::Token(Token::Add),
-        Node::Token(Token::Digit(5)),
-        Node::Token(Token::Digit(6)),
-        Node::Token(Token::Multiply),
-        Node::Token(Token::Digit(7)),
-        Node::Token(Token::Digit(8)),
-    ]);
+    let unstructured = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+        UnstructuredNode::Token(Token::Multiply),
+        UnstructuredNode::Token(Token::Digit(3)),
+        UnstructuredNode::Token(Token::Digit(4)),
+        UnstructuredNode::Token(Token::Add),
+        UnstructuredNode::Token(Token::Digit(5)),
+        UnstructuredNode::Token(Token::Digit(6)),
+        UnstructuredNode::Token(Token::Multiply),
+        UnstructuredNode::Token(Token::Digit(7)),
+        UnstructuredNode::Token(Token::Digit(8)),
+    ] };
 
     assert_eq!(
         unstructured.upgrade().unwrap(),
-        Node::Add(
-            box Node::Multiply(
-                box Node::Number(12),
-                box Node::Number(34),
+        StructuredNode::Add(
+            box StructuredNode::Multiply(
+                box StructuredNode::Number(12.into()),
+                box StructuredNode::Number(34.into()),
             ),
-            box Node::Multiply(
-                box Node::Number(56),
-                box Node::Number(78),
+            box StructuredNode::Multiply(
+                box StructuredNode::Number(56.into()),
+                box StructuredNode::Number(78.into()),
             ),
         )
     );
@@ -75,49 +78,49 @@ fn test_upgrade() {
 
 #[test]
 fn test_disambiguate() {
-    let tree = Node::Multiply(
-        box Node::Number(1),
-        box Node::Multiply(
-            box Node::Number(2),
-            box Node::Number(3),
+    let tree = StructuredNode::Multiply(
+        box StructuredNode::Number(1.into()),
+        box StructuredNode::Multiply(
+            box StructuredNode::Number(2.into()),
+            box StructuredNode::Number(3.into()),
         ),
     );
     assert_eq!(
         tree.disambiguate().unwrap(),
-        Node::Multiply(
-            box Node::Number(1),
-            box Node::Parentheses(
-                box Node::Multiply(
-                    box Node::Number(2),
-                    box Node::Number(3),
+        StructuredNode::Multiply(
+            box StructuredNode::Number(1.into()),
+            box StructuredNode::Parentheses(
+                box StructuredNode::Multiply(
+                    box StructuredNode::Number(2.into()),
+                    box StructuredNode::Number(3.into()),
                 ),
             ),
         )
     );
 
-    let tree = Node::Multiply(
-        box Node::Add(
-            box Node::Number(1),
-            box Node::Number(2),
+    let tree = StructuredNode::Multiply(
+        box StructuredNode::Add(
+            box StructuredNode::Number(1.into()),
+            box StructuredNode::Number(2.into()),
         ),
-        box Node::Add(
-            box Node::Number(3),
-            box Node::Number(4),
+        box StructuredNode::Add(
+            box StructuredNode::Number(3.into()),
+            box StructuredNode::Number(4.into()),
         ),
     );
     assert_eq!(
         tree.disambiguate().unwrap(),
-        Node::Multiply(
-            box Node::Parentheses(
-                box Node::Add(
-                    box Node::Number(1),
-                    box Node::Number(2),
+        StructuredNode::Multiply(
+            box StructuredNode::Parentheses(
+                box StructuredNode::Add(
+                    box StructuredNode::Number(1.into()),
+                    box StructuredNode::Number(2.into()),
                 ),
             ),
-            box Node::Parentheses(
-                box Node::Add(
-                    box Node::Number(3),
-                    box Node::Number(4),
+            box StructuredNode::Parentheses(
+                box StructuredNode::Add(
+                    box StructuredNode::Number(3.into()),
+                    box StructuredNode::Number(4.into()),
                 ),
             ),
         )
@@ -126,41 +129,41 @@ fn test_disambiguate() {
 
 #[test]
 fn test_ascii_render() {
-    let tree = Node::Add(
-        box Node::Multiply(
-            box Node::Number(12),
-            box Node::Number(34),
+    let tree = StructuredNode::Add(
+        box StructuredNode::Multiply(
+            box StructuredNode::Number(12.into()),
+            box StructuredNode::Number(34.into()),
         ),
-        box Node::Multiply(
-            box Node::Number(56),
-            box Node::Number(78),
+        box StructuredNode::Multiply(
+            box StructuredNode::Number(56.into()),
+            box StructuredNode::Number(78.into()),
         ),
     ).disambiguate().unwrap();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree, None);
+    renderer.draw_all(&tree, None);
     assert_eq!(
         renderer.lines,
         vec!["12*34+56*78"],
     );
 
-    let tree = Node::Add(
-        box Node::Add(
-            box Node::Number(12),
-            box Node::Divide(
-                box Node::Add(
-                    box Node::Number(34),
-                    box Node::Divide(
-                        box Node::Number(56),
-                        box Node::Number(78),
+    let tree = StructuredNode::Add(
+        box StructuredNode::Add(
+            box StructuredNode::Number(12.into()),
+            box StructuredNode::Divide(
+                box StructuredNode::Add(
+                    box StructuredNode::Number(34.into()),
+                    box StructuredNode::Divide(
+                        box StructuredNode::Number(56.into()),
+                        box StructuredNode::Number(78.into()),
                     )
                 ),
-                box Node::Number(90),
+                box StructuredNode::Number(90.into()),
             ),
         ),
-        box Node::Number(12),
+        box StructuredNode::Number(12.into()),
     ).disambiguate().unwrap();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree, None);
+    renderer.draw_all(&tree, None);
     assert_eq!(
         renderer.lines,
         vec![
@@ -174,7 +177,7 @@ fn test_ascii_render() {
 
     let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree, None);
+    renderer.draw_all(&tree, None);
     assert_eq!(
         renderer.lines,
         vec![
@@ -189,7 +192,7 @@ fn test_ascii_render() {
     // Basic cursor
     let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
+    renderer.draw_all(&tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
     assert_eq!(
         renderer.lines,
         vec![
@@ -204,7 +207,7 @@ fn test_ascii_render() {
     // Cursor matches adjacent size
     let tree = complex_unstructured_expression();
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(tree, Some(&mut NavPath::new(vec![3, 0, 3]).to_navigator()));
+    renderer.draw_all(&tree, Some(&mut NavPath::new(vec![3, 0, 3]).to_navigator()));
     assert_eq!(
         renderer.lines,
         vec![
@@ -219,61 +222,61 @@ fn test_ascii_render() {
 
 #[test]
 fn test_navigation() {
-    let mut div_bot = box Node::Unstructured(vec![
-        Node::Token(Token::Digit(7)),
-        Node::Token(Token::Digit(8)),
-    ]);
-    let div_bot_ptr = &mut *div_bot as *mut Node;
-    let mut unstructured = Node::Unstructured(vec![
-        Node::Token(Token::Digit(1)),
-        Node::Token(Token::Digit(2)),
-        Node::Token(Token::Multiply),
-        Node::Token(Token::Digit(3)),
-        Node::Token(Token::Digit(4)),
-        Node::Token(Token::Add),
-        Node::Divide(
-            box Node::Unstructured(vec![
-                Node::Token(Token::Digit(5)),
-                Node::Token(Token::Digit(6)),
-            ]),
-            div_bot,
+    let mut unstructured = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+        UnstructuredNode::Token(Token::Multiply),
+        UnstructuredNode::Token(Token::Digit(3)),
+        UnstructuredNode::Token(Token::Digit(4)),
+        UnstructuredNode::Token(Token::Add),
+        UnstructuredNode::Fraction(
+            UnstructuredNodeList { items: vec![
+                UnstructuredNode::Token(Token::Digit(5)),
+                UnstructuredNode::Token(Token::Digit(6)),
+            ] },
+            UnstructuredNodeList { items: vec![
+                UnstructuredNode::Token(Token::Digit(7)),
+                UnstructuredNode::Token(Token::Digit(8)),
+            ] },
         ),
-    ]);
+    ] };
 
     // Path 1: beginning
     let mut path = NavPath::new(vec![0]);
     let result = {
         let (node, i) = unstructured.navigate(&mut path.to_navigator());
-        let node_ptr: *mut Node = node;
+        let node_ptr: *mut UnstructuredNodeList = node;
         (node_ptr, i)
     };
     assert_eq!(
         result,
-        (&mut unstructured as *mut Node, 0)
+        (&mut unstructured as *mut UnstructuredNodeList, 0)
     );
 
     // Path 2: middle
     let mut path = NavPath::new(vec![3]);
     let result = {
         let (node, i) = unstructured.navigate(&mut path.to_navigator());
-        let node_ptr: *mut Node = node;
+        let node_ptr: *mut UnstructuredNodeList = node;
         (node_ptr, i)
     };
     assert_eq!(
         result,
-        (&mut unstructured as *mut Node, 3)
+        (&mut unstructured as *mut UnstructuredNodeList, 3)
     );
 
     // Path 3: nested
     let mut path = NavPath::new(vec![6, 1, 1]);
     let result = {
         let (node, i) = unstructured.navigate(&mut path.to_navigator());
-        let node_ptr: *mut Node = node;
-        (node_ptr, i)
+        (node.clone(), i)
     };
     assert_eq!(
         result,
-        (div_bot_ptr, 1)
+        (UnstructuredNodeList { items: vec![
+            UnstructuredNode::Token(Token::Digit(7)),
+            UnstructuredNode::Token(Token::Digit(8)),
+        ] }, 1)
     );
 }
 
@@ -392,7 +395,7 @@ fn test_modification() {
     let mut node = complex_unstructured_expression();
     let mut nav_path = NavPath::new(vec![0]);
 
-    node.insert(&mut nav_path, Node::Token(Token::Digit(1)));
+    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Digit(1)));
     assert_eq!(nav_path, NavPath::new(vec![1]));
 
     node.move_right(&mut nav_path);
@@ -405,16 +408,16 @@ fn test_modification() {
     node.move_right(&mut nav_path);
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 2]));
 
-    node.insert(&mut nav_path, Node::Token(Token::Add));
-    node.insert(&mut nav_path, Node::Divide(
-        box Node::Unstructured(vec![]),
-        box Node::Unstructured(vec![]),
+    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Add));
+    node.insert(&mut nav_path, UnstructuredNode::Fraction(
+        UnstructuredNodeList { items: vec![] },
+        UnstructuredNodeList { items: vec![] },
     ));
-    node.insert(&mut nav_path, Node::Token(Token::Digit(9)));
+    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Digit(9)));
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));
 
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(node.clone(), Some(&mut nav_path.to_navigator()));
+    renderer.draw_all(&node, Some(&mut nav_path.to_navigator()));
     assert_eq!(
         renderer.lines,
         vec![
@@ -431,7 +434,7 @@ fn test_modification() {
     node.delete(&mut nav_path);
     node.delete(&mut nav_path);
 
-    renderer.draw_all(node.clone(), Some(&mut nav_path.to_navigator()));
+    renderer.draw_all(&node, Some(&mut nav_path.to_navigator()));
     assert_eq!(
         renderer.lines,
         vec![

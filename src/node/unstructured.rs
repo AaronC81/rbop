@@ -1,17 +1,14 @@
+use core::cmp::max;
+
 use alloc::{vec::Vec, vec, boxed::Box};
 use rust_decimal::Decimal;
-use crate::{error::{Error, NodeError}, nav::{NavPath, NavPathNavigator}, render::Renderer};
+use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer}};
 use super::{parser, structured::StructuredNode};
 
 #[derive(Clone)]
 pub enum UnstructuredItem<'a> {
     Node(&'a UnstructuredNode),
     List(&'a UnstructuredNodeList),
-}
-
-pub enum MoveVerticalDirection {
-    Up,
-    Down,
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -35,15 +32,15 @@ pub enum UnstructuredNode {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct UnstructuredNodeList {
-    items: Vec<UnstructuredNode>
+    pub items: Vec<UnstructuredNode>
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct UnstructuredNodeRoot {
-    root: UnstructuredNodeList
+    pub root: UnstructuredNodeList
 }
 
-trait Navigable {
+pub trait Navigable {
     /// Given a navigation path, returns the node from following that path, and the index into that
     /// node. The navigation path will always terminate on an unstructured node list, so the final
     /// index in the path will be an index into the unstructured node list's items.
@@ -52,14 +49,14 @@ trait Navigable {
     }
 
     fn navigate_trace<F>(&mut self, path: &mut NavPathNavigator, trace: F) -> (&mut UnstructuredNodeList, usize) 
-        where F : FnMut(&mut UnstructuredItem);
+        where F : FnMut(UnstructuredItem);
 }
 
 impl Navigable for UnstructuredNode {
     fn navigate_trace<F>(&mut self, path: &mut NavPathNavigator, mut trace: F) -> (&mut UnstructuredNodeList, usize) 
-        where F : FnMut(&mut UnstructuredItem)
+        where F : FnMut(UnstructuredItem)
     {
-        trace(&mut UnstructuredItem::Node(&mut self));
+        trace(UnstructuredItem::Node(&self.clone()));
 
         if path.here() {
             panic!("navigation path must end on unstructured node");
@@ -92,9 +89,9 @@ impl Navigable for UnstructuredNode {
 
 impl Navigable for UnstructuredNodeList {
     fn navigate_trace<F>(&mut self, path: &mut NavPathNavigator, mut trace: F) -> (&mut UnstructuredNodeList, usize) 
-        where F : FnMut(&mut UnstructuredItem)
+        where F : FnMut(UnstructuredItem)
     {
-        trace(&mut UnstructuredItem::List(&mut self));
+        trace(UnstructuredItem::List(&self.clone()));
 
         if path.here() {
             return (self, path.next());
@@ -109,7 +106,7 @@ impl UnstructuredNodeRoot {
     pub fn move_right(&mut self, path: &mut NavPath) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
-        let children = current_node.items;
+        let children = &current_node.items;
 
         // Are we at the end of this node?
         if index == children.len() {
@@ -146,7 +143,7 @@ impl UnstructuredNodeRoot {
     pub fn move_left(&mut self, path: &mut NavPath) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
-        let children = current_node.items;
+        let children = &current_node.items;
 
         // Are we at the start of this node?
         if index == 0 {
@@ -189,13 +186,22 @@ impl UnstructuredNodeRoot {
         let mut nav_items = vec![];
         self.root.navigate_trace(
             &mut path.to_navigator(), 
-            |item: &mut UnstructuredItem| nav_items.push(item.clone())
+            |item| {
+                // I fought the borrow checker and lost :(
+                // We only care about nodes, so this makes our life easier
+                // We still want nav_items to be the right length
+                if let UnstructuredItem::Node(node) = item {
+                    nav_items.push(Some(node.clone()));
+                } else {
+                    nav_items.push(None);
+                }
+            }
         );
 
         // Iterate reversed, since we're looking from the inside out
         for (i, item) in nav_items.iter().rev().enumerate() {
             // Division is currently the only thing with vertical movement
-            if let UnstructuredItem::Node(UnstructuredNode::Fraction(top, bottom)) = item {
+            if let Some(UnstructuredNode::Fraction(top, bottom)) = item {
                 // Work out the true index of this in the nav tree.
                 // Remember, we're going backwards!
                 let true_index = (nav_items.len() - i) - 1;
@@ -209,8 +215,8 @@ impl UnstructuredNodeRoot {
                 if path[true_index] == index_allowing_movement {
                     // Yes!
                     // Determine the index to move to
-                    let match_points = renderer.match_vertical_cursor_points(
-                        top, bottom, direction
+                    let match_points = nav::match_vertical_cursor_points(
+                        renderer, top, bottom, direction
                     );
                     let new_index = match_points[path[true_index + 1]];
 
@@ -289,6 +295,12 @@ impl Upgradable for UnstructuredNodeList {
     }
 }
 
+impl Upgradable for UnstructuredNodeRoot {
+    fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>> {
+        self.root.upgrade()
+    }
+}
+
 impl Upgradable for UnstructuredNode {
     fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>> {
         match self {
@@ -303,3 +315,178 @@ impl Upgradable for UnstructuredNode {
     }
 }
 
+impl Layoutable for UnstructuredNodeRoot {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
+        self.root.layout(renderer, path)
+    }
+}
+
+impl Layoutable for UnstructuredNode {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> crate::render::LayoutBlock {
+        match self {
+            UnstructuredNode::Token(token)
+                => LayoutBlock::from_glyph(renderer, (*token).into()),
+
+            // TODO: deduplicate from structured nodes
+
+            UnstructuredNode::Sqrt(inner) => {
+                // Lay out the inner item first
+                let mut path = if let Some(p) = path {
+                    if p.next() == 0 {
+                        Some(p.step())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                
+                let inner_layout = inner.layout(renderer, (&mut path).as_mut());
+                let inner_area = inner_layout.area(renderer);
+
+                // Get glyph size for the sqrt symbol
+                let sqrt_symbol_layout = LayoutBlock::from_glyph(renderer, Glyph::Sqrt {
+                    inner_area
+                });
+
+                // We assume that the inner layout goes in the very bottom right, so work out the
+                // offset required based on the difference of the two areas
+                let x_offset = sqrt_symbol_layout.area(renderer).width - inner_layout.area(renderer).width;
+                let y_offset = sqrt_symbol_layout.area(renderer).height - inner_layout.area(renderer).height;
+
+                // Merge the two
+                sqrt_symbol_layout.merge_in_place(
+                    renderer, 
+                    &inner_layout.offset(x_offset, y_offset),
+                    MergeBaseline::OtherAsBaseline
+                )
+            }
+
+            UnstructuredNode::Fraction(top, bottom) => {
+                let (mut top_path, mut bottom_path) = {
+                    if let Some(p) = path {
+                        if p.next() == 0 {
+                            (Some(p.step()), None)
+                        } else if p.next() == 1 {
+                            (None, Some(p.step()))
+                        } else {
+                            panic!()
+                        }
+                    } else {
+                        (None, None)
+                    }
+                };
+
+                let top_layout = top.layout(
+                    renderer,
+                    (&mut top_path).as_mut()
+                );
+                let bottom_layout = bottom.layout(
+                    renderer,
+                    (&mut bottom_path).as_mut()
+                );
+
+                // The fraction line should be the widest of the two
+                let line_width = max(
+                    top_layout.area(renderer).width,
+                    bottom_layout.area(renderer).width,
+                );
+                let line_layout = LayoutBlock::from_glyph(renderer, Glyph::Fraction {
+                    inner_width: line_width
+                }).move_below_other(renderer, &top_layout);
+
+                let bottom_layout = bottom_layout
+                    .move_below_other(renderer, &line_layout);
+
+                top_layout
+                    .merge_along_vertical_centre(renderer, &line_layout, MergeBaseline::OtherAsBaseline)
+                    .merge_along_vertical_centre(renderer, &bottom_layout, MergeBaseline::SelfAsBaseline)
+            }
+        }
+    }
+}
+
+impl Layoutable for UnstructuredNodeList {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
+        let children = &self.items;
+
+        // We never actually mutate the paths...
+        // Unsafe time!
+        let mut paths = vec![];
+        let mut cursor_insertion_index = None;
+
+        unsafe {
+            if let Some(p) = path {
+                let p = p as *mut NavPathNavigator;
+                for i in 0..children.len() {
+                    paths.push({
+                        if p.as_mut().unwrap().next() == i && !p.as_mut().unwrap().here() {
+                            // The cursor is within the child
+                            Some(p.as_mut().unwrap().step())
+                        } else {
+                            None
+                        }
+                    })
+                }
+
+                // Is the cursor in this element?
+                if p.as_mut().unwrap().here() {
+                    cursor_insertion_index = Some(p.as_mut().unwrap().next());
+                }
+            } else {
+                for _ in 0..children.len() {
+                    paths.push(None);
+                }
+            }
+        }
+
+        let mut layouts = children
+            .iter()
+            .enumerate()
+            .map(|(i, node)| node.layout(
+                renderer,
+                (&mut paths[i]).as_mut()
+            ))
+            .collect::<Vec<_>>();
+
+        // If the cursor is here, insert it
+        if let Some(idx) = cursor_insertion_index {
+            let height = if layouts.is_empty() {
+                // Our default size will be that of the digit 0
+                LayoutBlock::from_glyph(renderer, Glyph::Digit {
+                    number: 0
+                }).area(renderer).height
+            } else if idx == 0 {
+                layouts[idx].area(renderer).height
+            } else if idx == layouts.len() {
+                layouts[idx - 1].area(renderer).height
+            } else {
+                let after = &layouts[idx];
+                let before = &layouts[idx - 1];
+
+                max(
+                    after.area(renderer).height,
+                    before.area(renderer).height
+                )
+            };
+            layouts.insert(
+                idx, 
+                LayoutBlock::from_glyph(renderer, Glyph::Cursor {
+                    height,
+                })
+            )
+        }
+
+        LayoutBlock::layout_horizontal(renderer, &layouts[..])
+
+    }
+}
+
+impl<'a> Layoutable for UnstructuredItem<'a> {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> crate::render::LayoutBlock {
+        match self {
+            UnstructuredItem::Node(node) => node.layout(renderer, path),
+            UnstructuredItem::List(children) => children.layout(renderer, path),
+        }
+    }
+}

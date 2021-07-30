@@ -1,4 +1,6 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
+
+use crate::{UnstructuredNodeList, render::{Layoutable, Renderer}, node::unstructured::Navigable};
 
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
@@ -81,4 +83,87 @@ impl<'a> NavPathNavigator<'a> {
             None
         }
     }
+}
+
+pub enum MoveVerticalDirection {
+    Up,
+    Down,
+}
+
+/// Given two unstructured nodes which are vertically centre-aligned, and a direction in which
+/// the cursor is moving, returns a vec of positions `v` such that moving the cursor from
+/// from position `i` in that direction should put the cursor in position `v[i]` of the other
+/// unstructured node. 
+pub fn match_vertical_cursor_points(
+    renderer: &mut impl Renderer,
+    top: &UnstructuredNodeList,
+    bottom: &UnstructuredNodeList,
+    direction: MoveVerticalDirection
+) -> Vec<usize> {
+    let (from_node, to_node) = match direction {
+        MoveVerticalDirection::Up => (bottom, top),
+        MoveVerticalDirection::Down => (top, bottom),
+    };
+
+    // Render both nodes
+    let mut from_layouts = from_node.items
+        .iter()
+        .map(|node| node.layout(renderer, None))
+        .collect::<Vec<_>>();
+    let mut to_layouts = to_node.items
+        .iter()
+        .map(|node| node.layout(renderer, None))
+        .collect::<Vec<_>>();
+
+    // Work out complete widths
+    let from_total_width: u64 = from_layouts
+        .iter()
+        .map(|x| x.area(renderer).width)
+        .sum();
+    let to_total_width: u64 = to_layouts
+        .iter()
+        .map(|x| x.area(renderer).width)
+        .sum();
+
+    // Calculate some offsets to vertically centre them
+    let (from_offset, to_offset) = if from_total_width < to_total_width {
+        ((to_total_width - from_total_width) / 2, 0)
+    } else if from_total_width > to_total_width {
+        (0, (from_total_width - to_total_width) / 2)
+    } else {
+        (0, 0)
+    };
+
+    // Collect boundary points between the layout items
+    let mut from_boundary_points = vec![from_offset];
+    for layout in &from_layouts {
+        from_boundary_points.push(
+            from_boundary_points.last().unwrap() + layout.area(renderer).width
+        )
+    }
+    let mut to_boundary_points = vec![to_offset];
+    for layout in &to_layouts {
+        to_boundary_points.push(
+            to_boundary_points.last().unwrap() + layout.area(renderer).width
+        )
+    }
+    
+    // Go through each "from" item, and find the closest "to" item
+    // O(n^2), whoops!
+    let mut result = vec![];
+    for from_point in from_boundary_points {
+        let mut closest_to_idx_found = 0;
+
+        for (i, to_point) in to_boundary_points.iter().enumerate() {
+            let this_distance = (*to_point as i64 - from_point as i64).abs();
+            let best_distance = (to_boundary_points[closest_to_idx_found] as i64 - from_point as i64).abs();
+            if this_distance < best_distance {
+                closest_to_idx_found = i;
+            }
+        }
+
+        result.push(closest_to_idx_found);
+    }
+
+    result
 }

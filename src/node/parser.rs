@@ -8,8 +8,8 @@ use super::{structured::StructuredNode, unstructured::{Token, UnstructuredNode, 
 /// Converts a list of unstructured nodes into a single structured node. Used to implement
 /// `Upgradable` for `UnstructuredNodeList`.
 pub struct Parser<'a> {
-    nodes: &'a [UnstructuredNode],
-    index: usize,
+    pub nodes: &'a [UnstructuredNode],
+    pub index: usize,
 }
 
 impl<'a> Parser<'a> {

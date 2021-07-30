@@ -1,8 +1,7 @@
 use core::cmp::max;
 use alloc::{vec::Vec, vec, string::ToString};
-use crate::Token;
+use crate::{StructuredNode, Token};
 
-use crate::Node;
 use crate::nav::NavPathNavigator;
 use crate::node;
 
@@ -91,6 +90,14 @@ impl From<Token> for Glyph {
     }
 }
 
+impl Glyph {
+    /// Returns the offset which should be applied to the y component of the `glyph` to vertically
+    /// centre it in a container of height `height`.
+    fn vertical_centre_glyph(&self, renderer: &mut impl Renderer, height: Dimension) -> Dimension {
+        (height - renderer.size(*self).height) / 2
+    }
+}
+
 #[derive(Debug)]
 pub struct LayoutBlock {
     pub glyphs: Vec<(Glyph, CalculatedPoint)>,
@@ -103,20 +110,20 @@ pub enum MergeBaseline {
 }
 
 impl LayoutBlock {
-    fn empty() -> LayoutBlock {
+    pub fn empty() -> LayoutBlock {
         LayoutBlock { glyphs: vec![], baseline: 0 }
     }
 
     /// Creates a new layout block with one glyph at the origin. The baseline is the centre of this
     /// glyph.
-    fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
+    pub fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
         LayoutBlock {
             glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
             baseline: renderer.size(glyph).height / 2,
         }
     }
 
-    fn area(&self, renderer: &mut impl Renderer) -> Area {
+    pub fn area(&self, renderer: &mut impl Renderer) -> Area {
         let mut width = 0;
         let mut height = 0;
 
@@ -131,7 +138,7 @@ impl LayoutBlock {
         Area { width, height }
     }
 
-    fn offset(&self, dx: Dimension, dy: Dimension) -> LayoutBlock {
+    pub fn offset(&self, dx: Dimension, dy: Dimension) -> LayoutBlock {
         LayoutBlock {
             glyphs: self.glyphs
                 .iter()
@@ -141,7 +148,7 @@ impl LayoutBlock {
         }
     }
 
-    fn merge_along_baseline(&self, other: &LayoutBlock) -> LayoutBlock {
+    pub fn merge_along_baseline(&self, other: &LayoutBlock) -> LayoutBlock {
         // Whose baseline is greater?
         // The points can't go negative, so we'll add to the glyphs of the lesser-baselined layout
         // block
@@ -170,7 +177,7 @@ impl LayoutBlock {
     }
 
     /// Merges the glyphs of two layout blocks along their vertical centre.
-    fn merge_along_vertical_centre(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+    pub fn merge_along_vertical_centre(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
         // Whose is wider? (i.e., who has the greatest vertical centre)
         // The points can't go negative, so we'll add to the glyphs of the smaller layout block
         let self_centre = self.area(renderer).width / 2;
@@ -203,7 +210,7 @@ impl LayoutBlock {
     }
 
     /// Merge the the glyphs of two layout blocks exactly, without moving them.
-    fn merge_in_place(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+    pub fn merge_in_place(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
         let glyphs =
             // Re-align the lesser-baselined glyphs
             self.glyphs
@@ -224,15 +231,38 @@ impl LayoutBlock {
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly to the right of another layout block.
-    fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+    pub fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
         self.offset(other.area(renderer).width, 0)
     }
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly below another layout block.
-    fn move_below_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+    pub fn move_below_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
         self.offset(0, other.area(renderer).height)
     }
+
+    /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
+    pub fn layout_horizontal(renderer: &mut impl Renderer, layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
+    {
+        let mut block = LayoutBlock::empty();
+
+        // Repeatedly merge the result block with a new block created to the right of it for
+        // each glyph
+        for layout in layouts {
+            block = block.merge_along_baseline(
+                &layout.move_right_of_other(renderer, &block),
+            );
+        }
+
+        block
+    }
+
+}
+
+pub trait Layoutable {
+    /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
+    /// locations.
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock;
 }
 
 pub trait Renderer {
@@ -248,296 +278,17 @@ pub trait Renderer {
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&mut self, tree: &Node, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {        
-        match tree {
-            Node::Number(number) => {
-                // We'll worry about negatives later!
-                if *number < 0 { panic!("negative numbers not supported") }
-
-                let glyph_layouts = (*number)
-                    .to_string()
-                    .chars()
-                    .map(|c| Glyph::Digit { number: c.to_digit(10).unwrap() as u8 })
-                    .map(|g| LayoutBlock::from_glyph(self, g))
-                    .collect::<Vec<_>>();
-
-                self.layout_horizontal(&glyph_layouts[..])
-            },
-
-            Node::Add(left, right) => self.layout_binop(Glyph::Add, left, right),
-            Node::Subtract(left, right) => self.layout_binop(Glyph::Subtract, left, right),
-            Node::Multiply(left, right) => self.layout_binop(Glyph::Multiply, left, right),
-
-            Node::Divide(top, bottom) => {
-                let (mut top_path, mut bottom_path) = {
-                    if let Some(p) = path {
-                        if p.next() == 0 {
-                            (Some(p.step()), None)
-                        } else if p.next() == 1 {
-                            (None, Some(p.step()))
-                        } else {
-                            panic!()
-                        }
-                    } else {
-                        (None, None)
-                    }
-                };
-
-                let top_layout = self.layout(
-                    top, 
-                    (&mut top_path).as_mut()
-                );
-                let bottom_layout = self.layout(
-                    bottom,
-                    (&mut bottom_path).as_mut()
-                );
-
-                // The fraction line should be the widest of the two
-                let line_width = max(
-                    top_layout.area(self).width,
-                    bottom_layout.area(self).width,
-                );
-                let line_layout = LayoutBlock::from_glyph(self, Glyph::Fraction {
-                    inner_width: line_width
-                }).move_below_other(self, &top_layout);
-
-                let bottom_layout = bottom_layout
-                    .move_below_other(self, &line_layout);
-
-                top_layout
-                    .merge_along_vertical_centre(self, &line_layout, MergeBaseline::OtherAsBaseline)
-                    .merge_along_vertical_centre(self, &bottom_layout, MergeBaseline::SelfAsBaseline)
-            }
-
-            Node::Sqrt(inner) => {
-                // Lay out the inner item first
-                let mut path = if let Some(p) = path {
-                    if p.next() == 0 {
-                        Some(p.step())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-                
-                let inner_layout = self.layout(inner, (&mut path).as_mut());
-                let inner_area = inner_layout.area(self);
-
-                // Get glyph size for the sqrt symbol
-                let sqrt_symbol_layout = LayoutBlock::from_glyph(self, Glyph::Sqrt {
-                    inner_area
-                });
-
-                // We assume that the inner layout goes in the very bottom right, so work out the
-                // offset required based on the difference of the two areas
-                let x_offset = sqrt_symbol_layout.area(self).width - inner_layout.area(self).width;
-                let y_offset = sqrt_symbol_layout.area(self).height - inner_layout.area(self).height;
-
-                // Merge the two
-                sqrt_symbol_layout.merge_in_place(
-                    self, 
-                    &inner_layout.offset(x_offset, y_offset),
-                    MergeBaseline::OtherAsBaseline
-                )
-            }
-
-            Node::Token(token) => LayoutBlock::from_glyph(self, (*token).into()),
-
-            Node::Unstructured(children) => {
-                // We never actually mutate the paths...
-                // Unsafe time!
-                let mut paths = vec![];
-                let mut cursor_insertion_index = None;
-
-                unsafe {
-                    if let Some(p) = path {
-                        let p = p as *mut NavPathNavigator;
-                        for i in 0..children.len() {
-                            paths.push({
-                                if p.as_mut().unwrap().next() == i && !p.as_mut().unwrap().here() {
-                                    // The cursor is within the child
-                                    Some(p.as_mut().unwrap().step())
-                                } else {
-                                    None
-                                }
-                            })
-                        }
-
-                        // Is the cursor in this element?
-                        if p.as_mut().unwrap().here() {
-                            cursor_insertion_index = Some(p.as_mut().unwrap().next());
-                        }
-                    } else {
-                        for _ in 0..children.len() {
-                            paths.push(None);
-                        }
-                    }
-                }
-
-                let mut layouts = children
-                    .iter()
-                    .enumerate()
-                    .map(|(i, node)| self.layout(
-                        node,
-                        (&mut paths[i]).as_mut()
-                    ))
-                    .collect::<Vec<_>>();
-
-                // If the cursor is here, insert it
-                if let Some(idx) = cursor_insertion_index {
-                    let height = if layouts.is_empty() {
-                        // Our default size will be that of the digit 0
-                        LayoutBlock::from_glyph(self, Glyph::Digit {
-                            number: 0
-                        }).area(self).height
-                    } else if idx == 0 {
-                        layouts[idx].area(self).height
-                    } else if idx == layouts.len() {
-                        layouts[idx - 1].area(self).height
-                    } else {
-                        let after = &layouts[idx];
-                        let before = &layouts[idx - 1];
-
-                        max(
-                            after.area(self).height,
-                            before.area(self).height
-                        )
-                    };
-                    layouts.insert(
-                        idx, 
-                        LayoutBlock::from_glyph(self, Glyph::Cursor {
-                            height,
-                        })
-                    )
-                }
-
-                self.layout_horizontal(&layouts[..])
-            },
-
-            _ => unimplemented!()
-        }
-    }
-
-    /// Given two unstructured nodes which are vertically centre-aligned, and a direction in which
-    /// the cursor is moving, returns a vec of positions `v` such that moving the cursor from
-    /// from position `i` in that direction should put the cursor in position `v[i]` of the other
-    /// unstructured node. 
-    fn match_vertical_cursor_points(&mut self, top: &Node, bottom: &Node, direction: node::MoveVerticalDirection) -> Vec<usize> where Self: Sized {
-        let (from_node, to_node) = match direction {
-            node::MoveVerticalDirection::Up => (bottom, top),
-            node::MoveVerticalDirection::Down => (top, bottom),
-        };
-
-        // Render both nodes
-        let mut from_layouts = from_node.unwrap_unstructured()
-            .iter()
-            .map(|node| self.layout(node, None))
-            .collect::<Vec<_>>();
-        let mut to_layouts = to_node.unwrap_unstructured()
-            .iter()
-            .map(|node| self.layout(node, None))
-            .collect::<Vec<_>>();
-
-        // Work out complete widths
-        let from_total_width: u64 = from_layouts
-            .iter()
-            .map(|x| x.area(self).width)
-            .sum();
-        let to_total_width: u64 = to_layouts
-            .iter()
-            .map(|x| x.area(self).width)
-            .sum();
-
-        // Calculate some offsets to vertically centre them
-        let (from_offset, to_offset) = if from_total_width < to_total_width {
-            ((to_total_width - from_total_width) / 2, 0)
-        } else if from_total_width > to_total_width {
-            (0, (from_total_width - to_total_width) / 2)
-        } else {
-            (0, 0)
-        };
-
-        // Collect boundary points between the layout items
-        let mut from_boundary_points = vec![from_offset];
-        for layout in &from_layouts {
-            from_boundary_points.push(
-                from_boundary_points.last().unwrap() + layout.area(self).width
-            )
-        }
-        let mut to_boundary_points = vec![to_offset];
-        for layout in &to_layouts {
-            to_boundary_points.push(
-                to_boundary_points.last().unwrap() + layout.area(self).width
-            )
-        }
-        
-        // Go through each "from" item, and find the closest "to" item
-        // O(n^2), whoops!
-        let mut result = vec![];
-        for from_point in from_boundary_points {
-            let mut closest_to_idx_found = 0;
-
-            for (i, to_point) in to_boundary_points.iter().enumerate() {
-                let this_distance = (*to_point as i64 - from_point as i64).abs();
-                let best_distance = (to_boundary_points[closest_to_idx_found] as i64 - from_point as i64).abs();
-                if this_distance < best_distance {
-                    closest_to_idx_found = i;
-                }
-            }
-
-            result.push(closest_to_idx_found);
-        }
-
-        result
+    fn layout(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {
+        root.layout(self, path)
     }
 
     /// Initialises the graphics surface and draws a node tree onto it.
-    fn draw_all(&mut self, node: Node, path: Option<&mut NavPathNavigator>) where Self: Sized {
-        let layout = self.layout(&node, path);
+    fn draw_all(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>) where Self: Sized {
+        let layout = self.layout(root, path);
         let area = layout.area(self);
         self.init(area);
         for (glyph, point) in layout.glyphs {
             self.draw(glyph, point);
         }
-    }
-
-    /// Returns the offset which should be applied to the y component of the `glyph` to vertically
-    /// centre it in a container of height `height`.
-    fn vertical_centre_glyph(&mut self, height: Dimension, glyph: Glyph) -> Dimension {
-        (height - self.size(glyph).height) / 2
-    }
-
-    /// Calculates layout for a binop, with the operator being the `glyph`.
-    fn layout_binop(&mut self, glyph: Glyph, left: &Node, right: &Node) -> LayoutBlock where Self: Sized {
-        // The navigation path is only for unstructured nodes, and the structured binops will never
-        // appear will an unstructured tree (except divide, which is handled separately), so all
-        // paths here are passed as None.
-
-        let left_layout = self.layout(left, None);
-        let binop_layout = LayoutBlock::from_glyph(self, glyph)
-            .move_right_of_other(self, &left_layout);
-        let right_layout = self.layout(right, None)
-            .move_right_of_other(self, &binop_layout);
-
-        left_layout
-            .merge_along_baseline(&binop_layout)
-            .merge_along_baseline(&right_layout)
-    }
-
-    /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
-    fn layout_horizontal(&mut self, layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
-    {
-        let mut block = LayoutBlock::empty();
-
-        // Repeatedly merge the result block with a new block created to the right of it for
-        // each glyph
-        for layout in layouts {
-            block = block.merge_along_baseline(
-                &layout.move_right_of_other(self, &block),
-            );
-        }
-
-        block
     }
 }

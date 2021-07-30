@@ -29,9 +29,9 @@ Do not override the default implementations of any other methods in `Renderer`.
 
 ## Node trees
 
-Though only one `Node` enum is used, rbop uses it to provide two different kinds of node trees.
+There are two available node types.
 
-An **unstructured** node tree is really easy to build through user inputs. Horizontal inputs are
+An `UnstructuredNode` tree is really easy to build through user inputs. Horizontal inputs are
 left as token streams, so operator precedence does not need to be considered.
 
 ```
@@ -40,7 +40,7 @@ left as token streams, so operator precedence does not need to be considered.
   5           1,+,2,*,3   5
 ```
 
-A **structured** node tree contains no raw token streams, and the tree structure fully expresses the
+A `StructuredNode` tree contains no raw token streams, and the tree structure fully expresses the
 correct operator precedence.
 
 ```

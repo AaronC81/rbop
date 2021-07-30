@@ -4,7 +4,7 @@
 use std::rc::Rc;
 
 use speedy2d::{self, Graphics2D, Window, color::Color, font::{Font, FormattedTextBlock, TextLayout, TextOptions}, window::{VirtualKeyCode, WindowHandler, WindowHelper}};
-use rbop::{Node, Token, render::Renderer};
+use rbop::{Token, UnstructuredNode, UnstructuredNodeList, node::unstructured::{UnstructuredNodeRoot, Upgradable}, render::Renderer};
 
 struct Speedy2DRenderer<'a> {
     graphics: Option<&'a mut Graphics2D>,
@@ -103,7 +103,7 @@ impl<'a> Renderer for Speedy2DRenderer<'a> {
 }
 
 struct WindowCalc {
-    node: rbop::Node,
+    node: UnstructuredNodeRoot,
     nav_path: rbop::nav::NavPath,
     needs_draw: bool,
 }
@@ -132,7 +132,7 @@ impl WindowHandler for WindowCalc {
             // Means that we drop create_renderer's mutable borrow before using `draw_text` again
             let result_text = {
                 let mut renderer = self.create_renderer(Some(graphics));
-                renderer.draw_all(self.node.clone(), Some(&mut self.nav_path.to_navigator()));
+                renderer.draw_all(&self.node, Some(&mut self.nav_path.to_navigator()));
 
                 let result = self.node.upgrade().map(|x| x.evaluate()).flatten();
                 renderer.text_layout(match result {
@@ -155,27 +155,27 @@ impl WindowHandler for WindowCalc {
 
     fn on_key_down(&mut self, helper: &mut WindowHelper<()>, virtual_key_code: Option<VirtualKeyCode>, scancode: speedy2d::window::KeyScancode) {
         match virtual_key_code.unwrap() {
-            VirtualKeyCode::Key0 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(0))),
-            VirtualKeyCode::Key1 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(1))),
-            VirtualKeyCode::Key2 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(2))),
-            VirtualKeyCode::Key3 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(3))),
-            VirtualKeyCode::Key4 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(4))),
-            VirtualKeyCode::Key5 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(5))),
-            VirtualKeyCode::Key6 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(6))),
-            VirtualKeyCode::Key7 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(7))),
-            VirtualKeyCode::Key8 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(8))),
-            VirtualKeyCode::Key9 => self.node.insert(&mut self.nav_path, Node::Token(Token::Digit(9))),
+            VirtualKeyCode::Key0 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(0))),
+            VirtualKeyCode::Key1 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(1))),
+            VirtualKeyCode::Key2 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(2))),
+            VirtualKeyCode::Key3 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(3))),
+            VirtualKeyCode::Key4 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(4))),
+            VirtualKeyCode::Key5 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(5))),
+            VirtualKeyCode::Key6 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(6))),
+            VirtualKeyCode::Key7 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(7))),
+            VirtualKeyCode::Key8 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(8))),
+            VirtualKeyCode::Key9 => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Digit(9))),
 
-            VirtualKeyCode::Plus => self.node.insert(&mut self.nav_path, Node::Token(Token::Add)),
-            VirtualKeyCode::Minus => self.node.insert(&mut self.nav_path, Node::Token(Token::Subtract)),
-            VirtualKeyCode::Asterisk => self.node.insert(&mut self.nav_path, Node::Token(Token::Multiply)),
-            VirtualKeyCode::Slash => self.node.insert(&mut self.nav_path, Node::Divide(
-                box Node::Unstructured(vec![]),
-                box Node::Unstructured(vec![]),
+            VirtualKeyCode::Plus => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Add)),
+            VirtualKeyCode::Minus => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Subtract)),
+            VirtualKeyCode::Asterisk => self.node.insert(&mut self.nav_path, UnstructuredNode::Token(Token::Multiply)),
+            VirtualKeyCode::Slash => self.node.insert(&mut self.nav_path, UnstructuredNode::Fraction(
+                UnstructuredNodeList { items: vec![] },
+                UnstructuredNodeList { items: vec![] },
             )),
 
-            VirtualKeyCode::S => self.node.insert(&mut self.nav_path, Node::Sqrt(
-                box Node::Unstructured(vec![]),
+            VirtualKeyCode::S => self.node.insert(&mut self.nav_path, UnstructuredNode::Sqrt(
+                UnstructuredNodeList { items: vec![] },
             )),
 
             VirtualKeyCode::Left => self.node.move_left(&mut self.nav_path),
@@ -199,7 +199,7 @@ impl WindowHandler for WindowCalc {
 
 fn main() {
     WindowCalc::new_window().run_loop(WindowCalc {
-        node: rbop::Node::Unstructured(vec![]),
+        node: UnstructuredNodeRoot { root: UnstructuredNodeList { items: vec![] } },
         nav_path: rbop::nav::NavPath::new(vec![0]),
         needs_draw: true,
     })

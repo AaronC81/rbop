@@ -382,30 +382,38 @@ impl Layoutable for UnstructuredNodeList {
 
         // If the cursor is here, insert it
         if let Some(idx) = cursor_insertion_index {
-            let height = if layouts.is_empty() {
+            // Get the layout to match the size to
+            let mut temp_layout = None;
+            let cursor_match_layout = if layouts.is_empty() {
                 // Our default size will be that of the digit 0
-                LayoutBlock::from_glyph(renderer, Glyph::Digit {
+                temp_layout = Some(LayoutBlock::from_glyph(renderer, Glyph::Digit {
                     number: 0
-                }).area(renderer).height
+                }));
+                &temp_layout.as_ref().unwrap()
             } else if idx == 0 {
-                layouts[idx].area(renderer).height
+                &layouts[idx]
             } else if idx == layouts.len() {
-                layouts[idx - 1].area(renderer).height
+                &layouts[idx - 1]
             } else {
                 let after = &layouts[idx];
                 let before = &layouts[idx - 1];
 
-                max(
-                    after.area(renderer).height,
-                    before.area(renderer).height
-                )
+                if after.area(renderer).height > before.area(renderer).height {
+                    after
+                } else {
+                    before
+                }
             };
-            layouts.insert(
-                idx, 
-                LayoutBlock::from_glyph(renderer, Glyph::Cursor {
-                    height,
-                })
-            )
+            let cursor_height = cursor_match_layout.area(renderer).height;
+            let cursor_baseline = cursor_match_layout.baseline;
+
+            // Hackily match the baseline
+            let mut cursor_layout = LayoutBlock::from_glyph(renderer, Glyph::Cursor {
+                height: cursor_height,
+            });
+            cursor_layout.baseline = cursor_baseline;
+
+            layouts.insert(idx, cursor_layout)
         }
 
         LayoutBlock::layout_horizontal(renderer, &layouts[..])

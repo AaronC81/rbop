@@ -4,16 +4,17 @@ use core::ops::Deref;
 use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::vec::Vec;
-use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::error::{Error, MathsError};
 use crate::node::common;
 use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer};
 use crate::nav::NavPathNavigator;
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+use libm::sqrt;
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum StructuredNode {
-    Number(Decimal),
+    Number(f64),
     Sqrt(Box<StructuredNode>),
     Add(Box<StructuredNode>, Box<StructuredNode>),
     Subtract(Box<StructuredNode>, Box<StructuredNode>),
@@ -83,11 +84,10 @@ impl StructuredNode {
     }
 
     /// Evaluates this node into a single number.
-    pub fn evaluate(&self) -> Result<Decimal, Box<dyn Error>> {
+    pub fn evaluate(&self) -> Result<f64, Box<dyn Error>> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
-            StructuredNode::Sqrt(inner) =>
-                inner.evaluate()?.sqrt().ok_or(box MathsError("illegal sqrt".into())),
+            StructuredNode::Sqrt(inner) => Ok(sqrt(inner.evaluate()?)),
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
             StructuredNode::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
             StructuredNode::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
@@ -117,7 +117,7 @@ impl Layoutable for StructuredNode {
         match self {
             StructuredNode::Number(number) => {
                 // We'll worry about negatives later!
-                if *number < Decimal::ZERO { panic!("negative numbers not supported") }
+                if *number < 0.0 { panic!("negative numbers not supported") }
 
                 let glyph_layouts = (*number)
                     .to_string()

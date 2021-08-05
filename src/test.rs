@@ -77,6 +77,60 @@ fn test_upgrade() {
 }
 
 #[test]
+fn test_upgrade_negative_numbers() {
+    // Simple case
+    let unstructured = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+    ] };
+    assert_eq!(
+        unstructured.upgrade().unwrap(),
+        StructuredNode::Number((-12).into())
+    );
+
+    // Multiple unary minuses
+    let unstructured = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+    ] };
+    assert_eq!(
+        unstructured.upgrade().unwrap(),
+        StructuredNode::Number((12).into())
+    );
+
+    // Rendering
+    let tree = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Digit(2)),
+    ] };
+    let mut renderer = AsciiRenderer::default();
+    renderer.draw_all(&tree.upgrade().unwrap(), None);
+    assert_eq!(
+        renderer.lines,
+        ["-12"]
+    );
+
+    // No ambiguity between minus and subtract
+    let unstructured = UnstructuredNodeList { items: vec![
+        UnstructuredNode::Token(Token::Digit(1)),
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Subtract),
+        UnstructuredNode::Token(Token::Digit(2)),
+    ] };
+
+    assert!(
+        (unstructured.upgrade().unwrap().evaluate().unwrap() - 3.0_f64).abs()
+        < f64::EPSILON
+    );
+}
+
+#[test]
 fn test_disambiguate() {
     let tree = StructuredNode::Multiply(
         box StructuredNode::Number(1.into()),

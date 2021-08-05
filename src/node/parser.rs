@@ -1,5 +1,4 @@
 use alloc::boxed::Box;
-use rust_decimal::Decimal;
 
 use crate::error::{Error, NodeError};
 
@@ -88,6 +87,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_level3(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
+        // while loop and flipping allows multiple unary minuses
+        let mut parsed_number_is_negative = false;
+        while let Some(Token::Subtract) = self.current_token() {
+            self.advance();
+            parsed_number_is_negative = !parsed_number_is_negative;
+        }
+
         if let Some(Token::Digit(d)) = self.current_token() {
             // Parse a number made of digits
             let mut number = d.into();
@@ -95,13 +101,17 @@ impl<'a> Parser<'a> {
 
             while !self.eoi() {
                 if let Some(Token::Digit(d)) = self.current_token() {
-                    number *= Decimal::from(10);
-                    number += Decimal::from(d);
+                    number *= 10_f64;
+                    number += d as f64;
 
                     self.advance();
                 } else {
                     break;
                 }
+            }
+
+            if parsed_number_is_negative {
+                number *= -1_f64;
             }
 
             Ok(StructuredNode::Number(number))

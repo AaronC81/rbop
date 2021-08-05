@@ -115,16 +115,25 @@ fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, left: &StructuredNod
 impl Layoutable for StructuredNode {
     fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
         match self {
-            StructuredNode::Number(number) => {
-                // We'll worry about negatives later!
-                if *number < 0.0 { panic!("negative numbers not supported") }
+            StructuredNode::Number(mut number) => {
+                let negative = number < 0.0;
+                if negative {
+                    number *= -1.0;
+                }
 
-                let glyph_layouts = (*number)
+                let mut glyph_layouts = number
                     .to_string()
                     .chars()
                     .map(|c| Glyph::Digit { number: c.to_digit(10).unwrap() as u8 })
                     .map(|g| LayoutBlock::from_glyph(renderer, g))
                     .collect::<Vec<_>>();
+
+                if negative {
+                    glyph_layouts.insert(
+                        0, 
+                        LayoutBlock::from_glyph(renderer, Glyph::Subtract)
+                    )
+                }
 
                 LayoutBlock::layout_horizontal(renderer, &glyph_layouts[..])
             },

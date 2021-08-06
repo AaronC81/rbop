@@ -1,6 +1,7 @@
 use core::cmp::max;
 
 use alloc::{vec::Vec, vec, boxed::Box};
+use rust_decimal::Decimal;
 use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer}};
 use super::{common, parser, structured::StructuredNode};
 

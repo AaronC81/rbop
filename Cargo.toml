@@ -11,9 +11,9 @@ description = "Rust framework for writing mathematical expression editors"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rust_decimal = { version = "1.14", default-features = false, features = ['maths'] }
-rust_decimal_macros = { version = "1.14", default-features = false }
+rust_decimal = { version = "1.15", default-features = false, features = ['maths'] }
 
-[dev-dependencies]
-termion = "1.5.6"
-speedy2d = "1.1.0"
+# !!! Uncomment the below to compile the examples !!!
+# [dev-dependencies]
+# termion = "1.5.6"
+# speedy2d = "1.1.0"

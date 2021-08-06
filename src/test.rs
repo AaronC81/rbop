@@ -5,6 +5,7 @@ use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
 use alloc::string::{String, ToString};
 use alloc::{vec, vec::Vec};
+use rust_decimal::Decimal;
 
 /// ```text
 ///       56    
@@ -124,9 +125,9 @@ fn test_upgrade_negative_numbers() {
         UnstructuredNode::Token(Token::Digit(2)),
     ] };
 
-    assert!(
-        (unstructured.upgrade().unwrap().evaluate().unwrap() - 3.0_f64).abs()
-        < f64::EPSILON
+    assert_eq!(
+        unstructured.upgrade().unwrap().evaluate().unwrap(),
+        Decimal::from(3)
     );
 }
 

@@ -1,4 +1,5 @@
 use alloc::boxed::Box;
+use rust_decimal::Decimal;
 
 use crate::error::{Error, NodeError};
 
@@ -96,13 +97,13 @@ impl<'a> Parser<'a> {
 
         if let Some(Token::Digit(d)) = self.current_token() {
             // Parse a number made of digits
-            let mut number = d.into();
+            let mut number: Decimal = d.into();
             self.advance();
 
             while !self.eoi() {
                 if let Some(Token::Digit(d)) = self.current_token() {
-                    number *= 10_f64;
-                    number += d as f64;
+                    number *= Decimal::from(10);
+                    number += Decimal::from(d);
 
                     self.advance();
                 } else {
@@ -111,7 +112,7 @@ impl<'a> Parser<'a> {
             }
 
             if parsed_number_is_negative {
-                number *= -1_f64;
+                number = -number;
             }
 
             Ok(StructuredNode::Number(number))

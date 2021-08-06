@@ -7,6 +7,26 @@ use alloc::string::{String, ToString};
 use alloc::{vec, vec::Vec};
 use rust_decimal::Decimal;
 
+macro_rules! uns_list {
+    ($($x:expr),* $(,)?) => { UnstructuredNodeList { items: vec![ $($x),* ] } };
+}
+
+macro_rules! token {
+    (+)             => { UnstructuredNode::Token(Token::Add) };
+    (-)             => { UnstructuredNode::Token(Token::Subtract) };
+    (*)             => { UnstructuredNode::Token(Token::Multiply) };
+    (/)             => { UnstructuredNode::Token(Token::Divide) };
+    ($x:literal)    => { UnstructuredNode::Token(Token::Digit($x)) };
+}
+
+macro_rules! tokens {
+    ($($x:tt) *) => { UnstructuredNodeList { items: vec![ $(token!($x)),* ] } };
+}
+
+macro_rules! uns_frac {
+    ($t:expr, $b:expr $(,)?) => { UnstructuredNode::Fraction($t, $b) };
+}
+
 /// ```text
 ///       56    
 ///    34+--
@@ -15,53 +35,32 @@ use rust_decimal::Decimal;
 ///     90  
 /// ```   
 fn complex_unstructured_expression() -> UnstructuredNodeRoot {
-    UnstructuredNodeRoot { root: UnstructuredNodeList { items: vec![ 
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-        UnstructuredNode::Token(Token::Add),
-        UnstructuredNode::Fraction(
-            UnstructuredNodeList { items: vec![
-                UnstructuredNode::Token(Token::Digit(3)),
-                UnstructuredNode::Token(Token::Digit(4)),
-                UnstructuredNode::Token(Token::Add),
-                UnstructuredNode::Fraction(
-                    UnstructuredNodeList { items: vec![
-                        UnstructuredNode::Token(Token::Digit(5)),
-                        UnstructuredNode::Token(Token::Digit(6)),        
-                    ] },        
-                    UnstructuredNodeList { items: vec![
-                        UnstructuredNode::Token(Token::Digit(7)),
-                        UnstructuredNode::Token(Token::Digit(8)),        
-                    ] },
-                ),        
-            ] },
-            UnstructuredNodeList { items: vec![
-                UnstructuredNode::Token(Token::Digit(9)),
-                UnstructuredNode::Token(Token::Digit(0)),        
-            ] },
+    UnstructuredNodeRoot { root: uns_list!(
+        token!(1),
+        token!(2),
+        token!(+),
+        uns_frac!(
+            uns_list!(
+                token!(3),
+                token!(4),
+                token!(+),
+                uns_frac!(
+                    tokens!(5 6),
+                    tokens!(7 8),
+                )
+            ),
+            tokens!(9 0),
         ),
-        UnstructuredNode::Token(Token::Add),
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-    ] } }
+        token!(+),
+        token!(1),
+        token!(2),
+    ) }
 }
 
 #[test]
 fn test_upgrade() {
-    let unstructured = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-        UnstructuredNode::Token(Token::Multiply),
-        UnstructuredNode::Token(Token::Digit(3)),
-        UnstructuredNode::Token(Token::Digit(4)),
-        UnstructuredNode::Token(Token::Add),
-        UnstructuredNode::Token(Token::Digit(5)),
-        UnstructuredNode::Token(Token::Digit(6)),
-        UnstructuredNode::Token(Token::Multiply),
-        UnstructuredNode::Token(Token::Digit(7)),
-        UnstructuredNode::Token(Token::Digit(8)),
-    ] };
-
+    let unstructured = tokens!(1 2 * 3 4 + 5 6 * 7 8);
+    
     assert_eq!(
         unstructured.upgrade().unwrap(),
         StructuredNode::Add(
@@ -80,53 +79,28 @@ fn test_upgrade() {
 #[test]
 fn test_upgrade_negative_numbers() {
     // Simple case
-    let unstructured = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-    ] };
     assert_eq!(
-        unstructured.upgrade().unwrap(),
+        tokens!(- 1 2).upgrade().unwrap(),
         StructuredNode::Number((-12).into())
     );
 
     // Multiple unary minuses
-    let unstructured = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-    ] };
     assert_eq!(
-        unstructured.upgrade().unwrap(),
+        tokens!(- - - - 1 2).upgrade().unwrap(),
         StructuredNode::Number((12).into())
     );
 
     // Rendering
-    let tree = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-    ] };
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree.upgrade().unwrap(), None);
+    renderer.draw_all(&tokens!(- 1 2).upgrade().unwrap(), None);
     assert_eq!(
         renderer.lines,
         ["-12"]
     );
 
     // No ambiguity between minus and subtract
-    let unstructured = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Subtract),
-        UnstructuredNode::Token(Token::Digit(2)),
-    ] };
-
     assert_eq!(
-        unstructured.upgrade().unwrap().evaluate().unwrap(),
+        tokens!(1 - - 2).upgrade().unwrap().evaluate().unwrap(),
         Decimal::from(3)
     );
 }
@@ -277,24 +251,18 @@ fn test_ascii_render() {
 
 #[test]
 fn test_navigation() {
-    let mut unstructured = UnstructuredNodeList { items: vec![
-        UnstructuredNode::Token(Token::Digit(1)),
-        UnstructuredNode::Token(Token::Digit(2)),
-        UnstructuredNode::Token(Token::Multiply),
-        UnstructuredNode::Token(Token::Digit(3)),
-        UnstructuredNode::Token(Token::Digit(4)),
-        UnstructuredNode::Token(Token::Add),
-        UnstructuredNode::Fraction(
-            UnstructuredNodeList { items: vec![
-                UnstructuredNode::Token(Token::Digit(5)),
-                UnstructuredNode::Token(Token::Digit(6)),
-            ] },
-            UnstructuredNodeList { items: vec![
-                UnstructuredNode::Token(Token::Digit(7)),
-                UnstructuredNode::Token(Token::Digit(8)),
-            ] },
-        ),
-    ] };
+    let mut unstructured = uns_list!(
+        token!(1),
+        token!(2),
+        token!(*),
+        token!(3),
+        token!(4),
+        token!(+),
+        uns_frac!(
+            tokens!(5 6),
+            tokens!(7 8),
+        )
+    );
 
     // Path 1: beginning
     let mut path = NavPath::new(vec![0]);
@@ -328,10 +296,7 @@ fn test_navigation() {
     };
     assert_eq!(
         result,
-        (UnstructuredNodeList { items: vec![
-            UnstructuredNode::Token(Token::Digit(7)),
-            UnstructuredNode::Token(Token::Digit(8)),
-        ] }, 1)
+        (tokens!(7 8), 1)
     );
 }
 

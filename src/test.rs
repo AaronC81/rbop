@@ -228,10 +228,8 @@ fn test_ascii_render() {
             box StructuredNode::Number(78.into()),
         ),
     ).disambiguate().unwrap();
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree, None);
     assert_eq!(
-        renderer.lines,
+        render!(tree),
         vec!["12*34+56*78"],
     );
 
@@ -251,10 +249,8 @@ fn test_ascii_render() {
         ),
         box StructuredNode::Number(12.into()),
     ).disambiguate().unwrap();
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree, None);
     assert_eq!(
-        renderer.lines,
+        render!(tree),
         vec![
             "      56   ",
             "   34+--   ",
@@ -265,10 +261,8 @@ fn test_ascii_render() {
     );
 
     let tree = complex_unstructured_expression();
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree, None);
     assert_eq!(
-        renderer.lines,
+        render!(tree),
         vec![
             "      56   ",
             "   34+--   ",
@@ -280,10 +274,8 @@ fn test_ascii_render() {
 
     // Basic cursor
     let tree = complex_unstructured_expression();
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator()));
     assert_eq!(
-        renderer.lines,
+        render!(tree, Some(&mut NavPath::new(vec![3, 0, 3, 1, 1]).to_navigator())),
         vec![
             "      56    ",
             "   34+---   ",
@@ -295,10 +287,8 @@ fn test_ascii_render() {
 
     // Cursor matches adjacent size
     let tree = complex_unstructured_expression();
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tree, Some(&mut NavPath::new(vec![3, 0, 3]).to_navigator()));
     assert_eq!(
-        renderer.lines,
+        render!(tree, Some(&mut NavPath::new(vec![3, 0, 3]).to_navigator())),
         vec![
             "      |56   ",
             "   34+|--   ",
@@ -496,10 +486,8 @@ fn test_modification() {
     node.insert(&mut nav_path, UnstructuredNode::Token(Token::Digit(9)));
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));
 
-    let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&node, Some(&mut nav_path.to_navigator()));
     assert_eq!(
-        renderer.lines,
+        render!(node, Some(&mut nav_path.to_navigator())),
         vec![
             "       9| 56   ",
             "    34+--+--   ",
@@ -514,9 +502,8 @@ fn test_modification() {
     node.delete(&mut nav_path);
     node.delete(&mut nav_path);
 
-    renderer.draw_all(&node, Some(&mut nav_path.to_navigator()));
     assert_eq!(
-        renderer.lines,
+        render!(node, Some(&mut nav_path.to_navigator())),
         vec![
             "        56   ",
             "    34|+--   ",

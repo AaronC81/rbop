@@ -1,3 +1,5 @@
+use core::str::FromStr;
+
 use crate::node::unstructured::{Navigable, UnstructuredNodeRoot, Upgradable};
 use crate::{UnstructuredItem, UnstructuredNodeList};
 use crate::nav::NavPath;
@@ -16,6 +18,7 @@ macro_rules! token {
     (-)             => { UnstructuredNode::Token(Token::Subtract) };
     (*)             => { UnstructuredNode::Token(Token::Multiply) };
     (/)             => { UnstructuredNode::Token(Token::Divide) };
+    (.)             => { UnstructuredNode::Token(Token::Point) };
     ($x:literal)    => { UnstructuredNode::Token(Token::Digit($x)) };
 }
 
@@ -25,6 +28,20 @@ macro_rules! tokens {
 
 macro_rules! uns_frac {
     ($t:expr, $b:expr $(,)?) => { UnstructuredNode::Fraction($t, $b) };
+}
+
+macro_rules! render {
+    ($n:expr, $p:expr $(,)?) => { {
+        let mut renderer = AsciiRenderer::default();
+        renderer.draw_all(&$n, $p);
+        renderer.lines
+    } };
+
+    ($n:expr $(,)?) => { render!($n, None) }
+}
+
+macro_rules! dec {
+    ($l:literal) => { Decimal::from_str(stringify!($l)).unwrap() };
 }
 
 /// ```text
@@ -103,6 +120,49 @@ fn test_upgrade_negative_numbers() {
         tokens!(1 - - 2).upgrade().unwrap().evaluate().unwrap(),
         Decimal::from(3)
     );
+}
+
+#[test]
+fn test_decimals() {
+    // Upgrading
+    assert_eq!(
+        tokens!(1 . 2).upgrade().unwrap(),
+        StructuredNode::Number(dec!(1.2))
+    );
+    assert_eq!(
+        tokens!(1 2 3 . 4 5).upgrade().unwrap(),
+        StructuredNode::Number(dec!(123.45))
+    );
+
+    // Rendering as unstructured
+    assert_eq!(
+        render!(tokens!(1 . 2)),
+        vec!["1.2"],
+    );
+
+    // Rendering as structured
+    assert_eq!(
+        render!(tokens!(1 . 2).upgrade().unwrap()),
+        vec!["1.2"],
+    );
+
+    // Evaluation
+    assert_eq!(
+        tokens!(0 . 3 - 0 . 1).upgrade().unwrap().evaluate().unwrap(),
+        dec!(0.2)
+    );
+
+    // Check we accept the "3." form 
+    assert_eq!(
+        tokens!(3 . + 2 .).upgrade().unwrap().evaluate().unwrap(),
+        dec!(5)
+    );
+
+    // Check we error on multiple decimal points
+    assert!(matches!(
+        tokens!(1 2 . 3 4 . 5 6).upgrade(),
+        Err(_)
+    ))
 }
 
 #[test]

@@ -124,7 +124,13 @@ impl Layoutable for StructuredNode {
                 let mut glyph_layouts = number
                     .to_string()
                     .chars()
-                    .map(|c| Glyph::Digit { number: c.to_digit(10).unwrap() as u8 })
+                    .map(|c| 
+                        if c == '.' {
+                            Glyph::Point
+                        } else {
+                            Glyph::Digit { number: c.to_digit(10).unwrap() as u8 }
+                        }
+                    )
                     .map(|g| LayoutBlock::from_glyph(renderer, g))
                     .collect::<Vec<_>>();
 

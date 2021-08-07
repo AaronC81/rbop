@@ -18,6 +18,7 @@ pub enum Token {
     Multiply,
     Divide,
     Digit(u8),
+    Point,
 }
 
 /// An unstructured node is one which can be inputted by the user. Unstructured nodes have as little
@@ -326,8 +327,6 @@ impl Layoutable for UnstructuredNode {
         match self {
             UnstructuredNode::Token(token)
                 => LayoutBlock::from_glyph(renderer, (*token).into()),
-
-            // TODO: deduplicate from structured nodes
 
             UnstructuredNode::Sqrt(inner)
                 => common::layout_sqrt(inner, renderer, path),

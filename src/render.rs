@@ -62,6 +62,7 @@ impl Area {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Glyph {
     Digit { number: u8 },
+    Point,
     
     Add,
     Subtract,
@@ -86,6 +87,7 @@ impl From<Token> for Glyph {
             Token::Multiply => Glyph::Multiply,
             Token::Divide => Glyph::Divide,
             Token::Digit(d) => Glyph::Digit { number: d },
+            Token::Point => Glyph::Point,
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::render::{Renderer, CalculatedPoint, Area, Glyph};
+use crate::render::{Area, CalculatedPoint, Glyph, Renderer, ViewportPoint};
 use alloc::{vec::Vec, string::{String, ToString}};
 
 #[derive(Default, Clone, Debug)]
@@ -7,7 +7,7 @@ pub struct AsciiRenderer {
 }
 
 impl AsciiRenderer {
-    fn put_char(&mut self, char: char, point: CalculatedPoint) {
+    fn put_char(&mut self, char: char, point: ViewportPoint) {
         self.lines[point.y as usize].replace_range(
             (point.x as usize)..(point.x as usize + 1),
             &char.to_string()
@@ -40,7 +40,9 @@ impl Renderer for AsciiRenderer {
         }
     }
 
-    fn draw(&mut self, glyph: Glyph, point: CalculatedPoint) {
+    fn draw(&mut self, glyph: Glyph, point: ViewportPoint) {
+        if point.x < 0 || point.y < 0 { return; }
+
         match glyph {
             Glyph::Digit { number } => {
                 let char = number.to_string().chars().next().unwrap();
@@ -79,9 +81,9 @@ impl Renderer for AsciiRenderer {
                 }
             },
             Glyph::Sqrt { inner_area } => {
-                self.put_char('\\', CalculatedPoint {
+                self.put_char('\\', ViewportPoint {
                     x: point.x,
-                    y: point.y + inner_area.height,
+                    y: point.y + inner_area.height as i64,
                 });
                 for dy in 1..=inner_area.height {
                     self.put_char('|', point.dx(1).dy(dy as i64));

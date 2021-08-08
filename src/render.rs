@@ -22,6 +22,51 @@ impl CalculatedPoint {
     pub fn dy(&self, delta: i64) -> CalculatedPoint {
         CalculatedPoint { x: self.x, y: (self.y as i64 + delta) as u64 }
     }
+
+    pub fn to_viewport_point(&self, viewport: Option<&Viewport>) -> ViewportPoint {
+        if let Some(viewport) = viewport {
+            ViewportPoint {
+                x: self.x as i64 - viewport.offset.x as i64,
+                y: self.y as i64 - viewport.offset.y as i64,
+            }
+        } else {
+            ViewportPoint { x: self.x as i64, y: self.y as i64 }
+        }
+    }
+}
+
+pub struct Viewport {
+    pub size: Area,
+    pub offset: CalculatedPoint,
+}
+
+impl Viewport {
+    pub fn new(size: Area) -> Self {
+        Viewport { size, offset: CalculatedPoint { x: 0, y: 0 } }
+    }
+
+    pub fn includes_point(&self, point: &ViewportPoint) -> bool {
+        // The ViewportPoint is relative to the top-left anyway, so the offset doesn't matter
+        point.x >= 0 && point.y >= 0
+        && point.x < self.size.width as i64 && point.y < self.size.height as i64
+    }
+}
+
+/// A point relative to the top-left of the viewport.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ViewportPoint {
+    pub x: i64,
+    pub y: i64,
+}
+
+impl ViewportPoint {
+    pub fn dx(&self, delta: i64) -> ViewportPoint {
+        ViewportPoint { x: self.x + delta, y: self.y }
+    }
+
+    pub fn dy(&self, delta: i64) -> ViewportPoint {
+        ViewportPoint { x: self.x, y: self.y + delta }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -240,6 +285,19 @@ impl LayoutBlock {
         block
     }
 
+    pub fn for_viewport(&self, viewport: Option<&Viewport>) -> Vec<(Glyph, ViewportPoint)> {
+        self.glyphs
+            .iter()
+            .map(|(g, p)| (*g, p.to_viewport_point(viewport)))
+            // Prune glyphs where the origin isn't in the viewport
+            // TODO: this isn't great, we want to prune based on area rather than treating glyphs as
+            // a point
+            .filter(|(_, p)| match viewport {
+                Some(v) => v.includes_point(p),
+                None => true, // Can't prune by viewport if there's no viewport
+            })
+            .collect::<Vec<_>>()
+    } 
 }
 
 pub trait Layoutable {
@@ -257,7 +315,7 @@ pub trait Renderer {
     fn init(&mut self, size: Area);
 
     /// Draw a glyph at a specific point.
-    fn draw(&mut self, glyph: Glyph, point: CalculatedPoint);
+    fn draw(&mut self, glyph: Glyph, point: ViewportPoint);
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
@@ -266,11 +324,18 @@ pub trait Renderer {
     }
 
     /// Initialises the graphics surface and draws a node tree onto it.
-    fn draw_all(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>) where Self: Sized {
-        let layout = self.layout(root, path);
-        let area = layout.area(self);
+    fn draw_all(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>, viewport: Option<&Viewport>) where Self: Sized {
+        let layout = self.layout(root, path); 
+        let area = if let Some(v) = viewport {
+            v.size
+        } else {
+            layout.area(self)
+        };
+
+        let viewport_points = layout.for_viewport(viewport);
+
         self.init(area);
-        for (glyph, point) in layout.glyphs {
+        for (glyph, point) in viewport_points {
             self.draw(glyph, point);
         }
     }

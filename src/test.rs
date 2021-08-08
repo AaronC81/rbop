@@ -1,6 +1,7 @@
 use core::str::FromStr;
 
 use crate::node::unstructured::{Navigable, UnstructuredNodeRoot, Upgradable};
+use crate::render::{Area, CalculatedPoint, Viewport};
 use crate::{UnstructuredItem, UnstructuredNodeList};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
@@ -31,13 +32,15 @@ macro_rules! uns_frac {
 }
 
 macro_rules! render {
-    ($n:expr, $p:expr $(,)?) => { {
+    ($n:expr, $p:expr, $v:expr $(,)?) => { {
         let mut renderer = AsciiRenderer::default();
-        renderer.draw_all(&$n, $p);
+        renderer.draw_all(&$n, $p, $v);
         renderer.lines
     } };
 
-    ($n:expr $(,)?) => { render!($n, None) }
+    ($n:expr, $p:expr $(,)?) => { render!($n, $p, None) };
+
+    ($n:expr $(,)?) => { render!($n, None, None) };
 }
 
 macro_rules! dec {
@@ -109,7 +112,7 @@ fn test_upgrade_negative_numbers() {
 
     // Rendering
     let mut renderer = AsciiRenderer::default();
-    renderer.draw_all(&tokens!(- 1 2).upgrade().unwrap(), None);
+    renderer.draw_all(&tokens!(- 1 2).upgrade().unwrap(), None, None);
     assert_eq!(
         renderer.lines,
         ["-12"]
@@ -512,4 +515,44 @@ fn test_modification() {
             "      90     "
         ],
     );
+}
+
+#[test]
+fn test_viewport() {
+    // No viewport should show everything
+    assert_eq!(
+        render!(tokens!(1 2 3 4 5)),
+        vec!["12345"],
+    );
+
+    // Very large viewport should show everything
+    assert_eq!(
+        render!(tokens!(1 2 3 4 5), None, Some(&Viewport::new(Area::new(10, 3)))),
+        vec![
+            "12345     ",
+            "          ",
+            "          ",
+        ],
+    );
+
+    // Perfectly sized viewport should show everything
+    assert_eq!(
+        render!(tokens!(1 2 3 4 5), None, Some(&Viewport::new(Area::new(5, 1)))),
+        vec!["12345"],
+    );
+
+    // Viewport at origin should prune what's to the right
+    assert_eq!(
+        render!(tokens!(1 2 3 4 5), None, Some(&Viewport::new(Area::new(2, 1)))),
+        vec!["12"],
+    );
+
+    // Viewport in middle should prune what's to the left and right
+    assert_eq!(
+        render!(tokens!(1 2 3 4 5), None, Some(&Viewport {
+            size: Area::new(2, 1),
+            offset: CalculatedPoint { x: 1, y: 0 },
+        })),
+        vec!["23"],
+    )
 }

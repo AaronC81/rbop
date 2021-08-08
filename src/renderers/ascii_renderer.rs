@@ -1,4 +1,4 @@
-use crate::render::{Area, CalculatedPoint, Glyph, Renderer, ViewportPoint};
+use crate::render::{Area, CalculatedPoint, Glyph, Renderer, ViewportGlyph, ViewportPoint, ViewportVisibility};
 use alloc::{vec::Vec, string::{String, ToString}};
 
 #[derive(Default, Clone, Debug)]
@@ -40,10 +40,48 @@ impl Renderer for AsciiRenderer {
         }
     }
 
-    fn draw(&mut self, glyph: Glyph, point: ViewportPoint) {
-        if point.x < 0 || point.y < 0 { return; }
+    fn draw(&mut self, mut viewport_glyph: ViewportGlyph) {
+        match viewport_glyph.visibility {
+            ViewportVisibility::Visible => (),
+            ViewportVisibility::Invisible => return,
+            ViewportVisibility::Clipped { left_clip, right_clip, .. } => {
+                // TODO: support other glyphs clipped
+                let mut preserve_this_glyph = false;
 
-        match glyph {
+                // Re-align and shorten a left-clipped fraction line
+                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph {
+                    if left_clip > 0 {
+                        viewport_glyph.glyph = Glyph::Fraction {
+                            inner_width: inner_width - left_clip
+                        };
+                        viewport_glyph.point.x = 0;
+
+                        preserve_this_glyph = true;
+                    }
+                }
+
+                // Shorten a right-clipped fraction line
+                // (The if-let binding is repeated to get a possibly updated inner_width)
+                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph {
+                    if right_clip > 0 {
+                        viewport_glyph.glyph = Glyph::Fraction {
+                            inner_width: inner_width - right_clip
+                        };
+
+                        preserve_this_glyph = true;
+                    }
+                }
+
+                // We weren't able to handle the clip, just forget this glyph
+                if !preserve_this_glyph {
+                    return;
+                }
+            }
+        } 
+
+        let point = viewport_glyph.point;
+
+        match viewport_glyph.glyph {
             Glyph::Digit { number } => {
                 let char = number.to_string().chars().next().unwrap();
                 self.put_char(char, point);

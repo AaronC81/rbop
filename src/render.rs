@@ -50,6 +50,29 @@ impl Viewport {
         point.x >= 0 && point.y >= 0
         && point.x < self.size.width as i64 && point.y < self.size.height as i64
     }
+
+    pub fn visibility(&self, point: &ViewportPoint, area: &Area) -> ViewportVisibility {
+        let left_clip = if point.x < 0 { point.x.abs() } else { 0 } as u64;
+        let top_clip = if point.y < 0 { point.y.abs() } else { 0 } as u64;
+
+        let end_x = point.x + area.width as i64;
+        let right_clip = if end_x > self.size.width as i64 {
+            end_x - self.size.width as i64
+        } else { 0 } as u64;
+
+        let end_y = point.y + area.height as i64;
+        let bottom_clip = if end_y > self.size.height as i64 {
+            end_y - self.size.height as i64 
+        } else { 0 } as u64;
+
+        if top_clip == 0 && bottom_clip == 0 && left_clip == 0 && right_clip == 0 {
+            ViewportVisibility::Visible
+        } else if end_x < 0 || end_y < 0 {
+            ViewportVisibility::Invisible
+        } else {
+            ViewportVisibility::Clipped { top_clip, bottom_clip, left_clip, right_clip }
+        }
+    }
 }
 
 /// A point relative to the top-left of the viewport.
@@ -67,6 +90,40 @@ impl ViewportPoint {
     pub fn dy(&self, delta: i64) -> ViewportPoint {
         ViewportPoint { x: self.x, y: self.y + delta }
     }
+}
+
+/// Describes the visibility of an item within a viewport.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum ViewportVisibility {
+    /// The entire item is visible.
+    Visible,
+
+    /// Some of the item is outside of the viewport, but since the rest is still visible, it must
+    /// still be rendered.
+    Clipped {
+        /// The height from the top of the item which is clipped out of the viewport.
+        top_clip: Dimension,
+        
+        /// The height from the bottom of the item which is clipped out of the viewport.
+        bottom_clip: Dimension,
+
+        /// The width from the left of the item which is clipped out of the viewport.
+        left_clip: Dimension,
+
+        /// The width from the right of the item which is clipped out of the viewport.
+        right_clip: Dimension,
+    },
+
+    /// The item is entirely outside of the viewport and doesn't need to be rendered. (Such items
+    /// will typically be "pruned" rather than being passed for drawing by a renderer.)
+    Invisible,
+}
+
+/// A glyph in a viewport.
+pub struct ViewportGlyph {
+    pub glyph: Glyph,
+    pub point: ViewportPoint,
+    pub visibility: ViewportVisibility,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -285,17 +342,23 @@ impl LayoutBlock {
         block
     }
 
-    pub fn for_viewport(&self, viewport: Option<&Viewport>) -> Vec<(Glyph, ViewportPoint)> {
+    pub fn for_viewport(&self, renderer: &mut impl Renderer, viewport: Option<&Viewport>) -> Vec<ViewportGlyph> {
         self.glyphs
             .iter()
-            .map(|(g, p)| (*g, p.to_viewport_point(viewport)))
-            // Prune glyphs where the origin isn't in the viewport
-            // TODO: this isn't great, we want to prune based on area rather than treating glyphs as
-            // a point
-            .filter(|(_, p)| match viewport {
-                Some(v) => v.includes_point(p),
-                None => true, // Can't prune by viewport if there's no viewport
+            .map(|(g, p)| {
+                let viewport_point = p.to_viewport_point(viewport);
+                ViewportGlyph {
+                    glyph: *g,
+                    point: viewport_point,
+                    visibility: if let Some(viewport) = viewport {
+                        viewport.visibility(&viewport_point, &renderer.size(*g))
+                    } else {
+                        ViewportVisibility::Visible
+                    }, 
+                }
             })
+            // Prune glyphs where the origin isn't in the viewport
+            .filter(|vpg| vpg.visibility != ViewportVisibility::Invisible)
             .collect::<Vec<_>>()
     } 
 }
@@ -315,7 +378,7 @@ pub trait Renderer {
     fn init(&mut self, size: Area);
 
     /// Draw a glyph at a specific point.
-    fn draw(&mut self, glyph: Glyph, point: ViewportPoint);
+    fn draw(&mut self, glyph: ViewportGlyph);
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
@@ -332,11 +395,11 @@ pub trait Renderer {
             layout.area(self)
         };
 
-        let viewport_points = layout.for_viewport(viewport);
+        let viewport_glyphs = layout.for_viewport(self, viewport);
 
         self.init(area);
-        for (glyph, point) in viewport_points {
-            self.draw(glyph, point);
+        for glyph in viewport_glyphs {
+            self.draw(glyph);
         }
     }
 }

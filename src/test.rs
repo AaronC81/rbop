@@ -554,5 +554,27 @@ fn test_viewport() {
             offset: CalculatedPoint { x: 1, y: 0 },
         })),
         vec!["23"],
-    )
+    );
+
+    // Viewport should clip glyphs which don't completely fit
+    assert_eq!(
+        render!(
+            uns_list!(
+                UnstructuredNode::Fraction(
+                    tokens!(1 + 2 + 3 + 4),
+                    tokens!(5 + 6 + 7 + 8),
+                )
+            ),
+            None,
+            Some(&Viewport {
+                size: Area::new(3, 3),
+                offset: CalculatedPoint { x: 2, y: 0 }
+            })
+        ),
+        vec![
+            "2+3",
+            "---",
+            "6+7",
+        ]
+    );
 }

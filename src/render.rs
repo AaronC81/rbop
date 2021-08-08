@@ -7,26 +7,7 @@ use crate::node;
 
 pub type Dimension = u64;
 
-/// Used while the layout is still being calculated, where elements may be before/above the baseline
-/// and thus be at negative points.
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct CalculatingPoint {
-    x: i64,
-    y: i64,
-}
-
-impl CalculatingPoint {
-    pub fn dx(&self, delta: i64) -> CalculatingPoint {
-        CalculatingPoint { x: self.x + delta, y: self.y }
-    }
-
-    pub fn dy(&self, delta: i64) -> CalculatingPoint {
-        CalculatingPoint { x: self.x, y: self.y + delta }
-    }
-}
-
-/// Used when the layout has been calculated, after elements have been shifted from their
-/// `CalculatingPoint`s to be relative to (0, 0).
+/// A point relative to the top-left of the layout.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct CalculatedPoint {
     pub x: u64,

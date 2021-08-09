@@ -69,8 +69,8 @@ impl Viewport {
             ViewportVisibility::Visible
         } else {
             ViewportVisibility::Clipped { 
-                invisible:  end_x < 0 || end_y < 0
-                    || point.x > area.width as i64 || point.y > area.height as i64,
+                invisible: end_x + (area.width as i64) < 0 || end_y + (area.height as i64) < 0
+                    || point.x > self.size.width as i64 || point.y > self.size.height as i64,
                 top_clip, bottom_clip, left_clip, right_clip
             }
         }

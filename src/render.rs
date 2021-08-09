@@ -120,6 +120,7 @@ pub enum ViewportVisibility {
 }
 
 /// A glyph in a viewport.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ViewportGlyph {
     pub glyph: Glyph,
     pub point: ViewportPoint,

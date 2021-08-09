@@ -67,7 +67,8 @@ impl Viewport {
 
         if top_clip == 0 && bottom_clip == 0 && left_clip == 0 && right_clip == 0 {
             ViewportVisibility::Visible
-        } else if end_x < 0 || end_y < 0 {
+        } else if end_x < 0 || end_y < 0
+        || point.x > area.width as i64 || point.y > area.height as i64 {
             ViewportVisibility::Invisible
         } else {
             ViewportVisibility::Clipped { top_clip, bottom_clip, left_clip, right_clip }

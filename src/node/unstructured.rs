@@ -2,7 +2,7 @@ use core::cmp::max;
 
 use alloc::{vec::Vec, vec, boxed::Box};
 use rust_decimal::Decimal;
-use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer}};
+use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, Viewport, ViewportVisibility}};
 use super::{common, parser, structured::StructuredNode};
 
 #[derive(Clone)]
@@ -103,8 +103,36 @@ impl Navigable for UnstructuredNodeList {
 }
 
 impl UnstructuredNodeRoot { 
+    /// Checks if the cursor is outside of the viewport. If so, moves the viewport to fit it inside
+    /// again.
+    pub fn ensure_cursor_visible(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
+        if let Some(viewport) = viewport {
+            let cursor_visibility = renderer.cursor_visibility(
+                self,
+                &mut path.to_navigator(),
+                Some(&*viewport),
+            );
+
+            if let ViewportVisibility::Clipped { top_clip, bottom_clip, left_clip, right_clip, .. } = cursor_visibility {
+                match (top_clip, bottom_clip) {
+                    (0, 0) => (),
+                    (_, 0) => viewport.offset.y -= top_clip,
+                    (0, _) => viewport.offset.y += bottom_clip,
+                    _ => panic!("cursor does not fit vertically in viewport"),
+                }
+
+                match (left_clip, right_clip) {
+                    (0, 0) => (),
+                    (_, 0) => viewport.offset.x -= left_clip,
+                    (0, _) => viewport.offset.x += right_clip,
+                    _ => panic!("cursor does not fit horizontally in viewport"),
+                }
+            }
+        }
+    }
+
     /// Modifies the given navigation path to move the cursor right.
-    pub fn move_right(&mut self, path: &mut NavPath) {
+    pub fn move_right(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
         let children = &current_node.items;
@@ -138,10 +166,12 @@ impl UnstructuredNodeRoot {
                 _ => path.offset(1),
             }
         }
+
+        self.ensure_cursor_visible(path, renderer, viewport);
     }
 
     /// Modifies the given navigation path to move the cursor left.
-    pub fn move_left(&mut self, path: &mut NavPath) {
+    pub fn move_left(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
         // Fetch the node which we're navigating within
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
         let children = &current_node.items;
@@ -175,9 +205,11 @@ impl UnstructuredNodeRoot {
                 _ => (),
             }
         }
+
+        self.ensure_cursor_visible(path, renderer, viewport);
     }
 
-    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection, renderer: &mut impl Renderer) {
+    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
         // Say you're in a sqrt at the top of a fraction, and you press down, you'd expect it to
         // move to the bottom of the fraction.
         // That's why we need to check up the entire nav path, looking for fractions.
@@ -232,20 +264,22 @@ impl UnstructuredNodeRoot {
                 }
             }
         }
+
+        self.ensure_cursor_visible(path, renderer, viewport);
     }
     
     /// Modifies the given navigation path to move the cursor down.
-    pub fn move_down(&mut self, path: &mut NavPath, renderer: &mut impl Renderer) {
-        self.move_vertically(path, MoveVerticalDirection::Down, renderer);
+    pub fn move_down(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
+        self.move_vertically(path, MoveVerticalDirection::Down, renderer, viewport);
     }
 
     /// Modifies the given navigation path to move the cursor up.
-    pub fn move_up(&mut self, path: &mut NavPath, renderer: &mut impl Renderer) {
-        self.move_vertically(path, MoveVerticalDirection::Up, renderer);
+    pub fn move_up(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
+        self.move_vertically(path, MoveVerticalDirection::Up, renderer, viewport);
     }
 
     /// Inserts the given node at the cursor position, and moves the cursor accordingly.
-    pub fn insert(&mut self, path: &mut NavPath, new_node: UnstructuredNode) {
+    pub fn insert(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>, new_node: UnstructuredNode) {
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
 
         current_node.items.insert(index, new_node.clone());
@@ -260,10 +294,12 @@ impl UnstructuredNodeRoot {
             // Just move past it
             _ => path.offset(1),
         }
+
+        self.ensure_cursor_visible(path, renderer, viewport);
     }
 
     /// Deletes the item behind the cursor.
-    pub fn delete(&mut self, path: &mut NavPath) {
+    pub fn delete(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, mut viewport: Option<&mut Viewport>) {
         let (current_node, index) = self.root.navigate(&mut path.to_navigator());
 
         if index > 0 {
@@ -275,10 +311,12 @@ impl UnstructuredNodeRoot {
             if !path.root() {
                 // Move right and delete, to delete this item
                 // (Assumes containers have no horizontal slots)
-                self.move_right(path);
-                self.delete(path);
+                self.move_right(path, renderer, viewport.as_mut().map(|x| x as _));
+                self.delete(path, renderer, viewport.as_mut().map(|x| x as _));
             }
         }
+
+        self.ensure_cursor_visible(path, renderer, viewport.as_mut().map(|x| x as _));
     }
 }
 

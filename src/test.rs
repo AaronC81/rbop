@@ -360,106 +360,106 @@ fn test_movement() {
     let mut renderer = AsciiRenderer::default();
 
     // Go all the way to the right
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![1]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 2]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 4]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![4]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![5]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![7]));
 
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![7]));
 
     // Now go back to the left
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![6]));
 
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![4]));
 
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 4]));
 
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 2]));
 
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
 
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
 
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3]));
 
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
-    node.move_left(&mut nav_path);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![0]));
 
     // Move into a fraction to test vertical movement
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 0]));
     
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
     
     // Now in a fraction, test vertical movement
-    node.move_up(&mut nav_path, &mut renderer);
+    node.move_up(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_down(&mut nav_path, &mut renderer);
+    node.move_down(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 1, 0]));
 
-    node.move_up(&mut nav_path, &mut renderer);
+    node.move_up(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3, 0, 0]));
 
-    node.move_down(&mut nav_path, &mut renderer);
-    node.move_down(&mut nav_path, &mut renderer);
+    node.move_down(&mut nav_path, &mut renderer, None);
+    node.move_down(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 1, 2]));
 
-    node.move_up(&mut nav_path, &mut renderer);
+    node.move_up(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![3, 0, 3]));
 }
 
@@ -467,26 +467,27 @@ fn test_movement() {
 fn test_modification() {
     let mut node = complex_unstructured_expression();
     let mut nav_path = NavPath::new(vec![0]);
+    let mut renderer = AsciiRenderer::default();
 
-    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Digit(1)));
+    node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Token(Token::Digit(1)));
     assert_eq!(nav_path, NavPath::new(vec![1]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 0]));
 
-    node.move_right(&mut nav_path);
-    node.move_right(&mut nav_path);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 2]));
 
-    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Add));
-    node.insert(&mut nav_path, UnstructuredNode::Fraction(
+    node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Token(Token::Add));
+    node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Fraction(
         UnstructuredNodeList { items: vec![] },
         UnstructuredNodeList { items: vec![] },
     ));
-    node.insert(&mut nav_path, UnstructuredNode::Token(Token::Digit(9)));
+    node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Token(Token::Digit(9)));
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));
 
     assert_eq!(
@@ -501,9 +502,9 @@ fn test_modification() {
     );
 
     // Now try deleting some bits
-    node.delete(&mut nav_path);
-    node.delete(&mut nav_path);
-    node.delete(&mut nav_path);
+    node.delete(&mut nav_path, &mut renderer, None);
+    node.delete(&mut nav_path, &mut renderer, None);
+    node.delete(&mut nav_path, &mut renderer, None);
 
     assert_eq!(
         render!(node, Some(&mut nav_path.to_navigator())),

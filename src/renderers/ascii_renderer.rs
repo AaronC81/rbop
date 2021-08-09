@@ -43,7 +43,7 @@ impl Renderer for AsciiRenderer {
     fn draw(&mut self, mut viewport_glyph: ViewportGlyph) {
         match viewport_glyph.visibility {
             ViewportVisibility::Visible => (),
-            ViewportVisibility::Invisible => return,
+            ViewportVisibility::Clipped { invisible, .. } if invisible => return,
             ViewportVisibility::Clipped { left_clip, right_clip, .. } => {
                 // TODO: support other glyphs clipped
                 let mut preserve_this_glyph = false;

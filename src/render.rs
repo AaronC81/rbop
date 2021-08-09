@@ -67,11 +67,12 @@ impl Viewport {
 
         if top_clip == 0 && bottom_clip == 0 && left_clip == 0 && right_clip == 0 {
             ViewportVisibility::Visible
-        } else if end_x < 0 || end_y < 0
-        || point.x > area.width as i64 || point.y > area.height as i64 {
-            ViewportVisibility::Invisible
         } else {
-            ViewportVisibility::Clipped { top_clip, bottom_clip, left_clip, right_clip }
+            ViewportVisibility::Clipped { 
+                invisible:  end_x < 0 || end_y < 0
+                    || point.x > area.width as i64 || point.y > area.height as i64,
+                top_clip, bottom_clip, left_clip, right_clip
+            }
         }
     }
 }
@@ -99,9 +100,11 @@ pub enum ViewportVisibility {
     /// The entire item is visible.
     Visible,
 
-    /// Some of the item is outside of the viewport, but since the rest is still visible, it must
-    /// still be rendered.
+    /// Some or all of the item is outside of the viewport.
     Clipped {
+        /// True if the item is entirely invisible and does not need to be drawn at all.
+        invisible: bool,
+
         /// The height from the top of the item which is clipped out of the viewport.
         top_clip: Dimension,
         
@@ -114,10 +117,6 @@ pub enum ViewportVisibility {
         /// The width from the right of the item which is clipped out of the viewport.
         right_clip: Dimension,
     },
-
-    /// The item is entirely outside of the viewport and doesn't need to be rendered. (Such items
-    /// will typically be "pruned" rather than being passed for drawing by a renderer.)
-    Invisible,
 }
 
 /// A glyph in a viewport.
@@ -359,8 +358,6 @@ impl LayoutBlock {
                     }, 
                 }
             })
-            // Prune glyphs where the origin isn't in the viewport
-            .filter(|vpg| vpg.visibility != ViewportVisibility::Invisible)
             .collect::<Vec<_>>()
     } 
 }
@@ -403,5 +400,19 @@ pub trait Renderer {
         for glyph in viewport_glyphs {
             self.draw(glyph);
         }
+    }
+
+    /// Returns the visibility of the cursor when rendering a set of nodes in a viewport.
+    fn cursor_visibility(&mut self, root: &impl Layoutable, path: &mut NavPathNavigator, viewport: Option<&Viewport>) -> ViewportVisibility where Self: Sized {
+        let layout = self.layout(root, Some(path)); 
+        let viewport_glyphs = layout.for_viewport(self, viewport);
+
+        for glyph in viewport_glyphs {
+            if let ViewportGlyph { glyph: Glyph::Cursor { .. }, visibility, .. } = glyph {
+                return visibility
+            }
+        }
+
+        panic!("cursor was not rendered");
     }
 }

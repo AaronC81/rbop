@@ -293,14 +293,14 @@ impl UnstructuredNodeRoot {
         current_node.items.insert(index, new_node.clone());
 
         match new_node {
-            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) => {
+            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) => {
                 // Move into the new node
                 path.push(0);
                 path.push(0);
             },
 
             // Just move past it
-            _ => path.offset(1),
+            UnstructuredNode::Token(_) => path.offset(1),
         }
 
         self.ensure_cursor_visible(path, renderer, viewport);

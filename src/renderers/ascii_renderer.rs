@@ -104,7 +104,7 @@ impl Renderer for AsciiRenderer {
                     for dy in 1..(inner_height - 1) {
                         self.put_char('|', point.dy(dy as i64))
                     }
-                    self.put_char('\\', point.dy(inner_height as i64));
+                    self.put_char('\\', point.dy(inner_height as i64 - 1));
                 }
             },
             Glyph::RightParenthesis { inner_height } => {
@@ -115,7 +115,7 @@ impl Renderer for AsciiRenderer {
                     for dy in 1..(inner_height - 1) {
                         self.put_char('|', point.dy(dy as i64));
                     }
-                    self.put_char('/', point.dy(inner_height as i64));
+                    self.put_char('/', point.dy(inner_height as i64 - 1));
                 }
             },
             Glyph::Sqrt { inner_area } => {

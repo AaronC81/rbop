@@ -152,8 +152,8 @@ impl Layoutable for StructuredNode {
                 => common::layout_fraction(top.deref(), bottom.deref(), renderer, path),
             StructuredNode::Sqrt(inner)
                 => common::layout_sqrt(inner.deref(), renderer, path),
-
-            StructuredNode::Parentheses(_) => todo!(),
+            StructuredNode::Parentheses(inner)
+                => common::layout_parentheses(inner.deref(), renderer, path),
         }
     }
 }

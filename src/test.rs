@@ -579,3 +579,30 @@ fn test_viewport() {
         ]
     );
 }
+
+#[test]
+fn test_parentheses() {
+    let nodes = uns_list!(
+        token!(1),
+        token!(+),
+        UnstructuredNode::Parentheses(uns_list!(
+            UnstructuredNode::Fraction(
+                uns_list!(UnstructuredNode::Fraction(
+                    uns_list!(token!(2)), uns_list!(token!(3)))
+                ),
+                uns_list!(UnstructuredNode::Parentheses(uns_list!(token!(4)))),
+            )
+        ))
+    );
+
+    assert_eq!(
+        render!(nodes, None, None),
+        vec![
+            "  / 2 \\",
+            "  | - |",
+            "  | 3 |",
+            "1+|---|",
+            "  \\(4)/"
+        ]
+    )
+}

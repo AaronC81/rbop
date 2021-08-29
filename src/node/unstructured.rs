@@ -29,6 +29,7 @@ pub enum UnstructuredNode {
     Token(Token),
     Sqrt(UnstructuredNodeList),
     Fraction(UnstructuredNodeList, UnstructuredNodeList),
+    Parentheses(UnstructuredNodeList),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -70,6 +71,13 @@ impl Navigable for UnstructuredNode {
             UnstructuredNode::Sqrt(inner) => {
                 if next_index != 0 {
                     panic!("index out of range for sqrt navigation")
+                }
+
+                inner.navigate_trace(step_path, trace)
+            },
+            UnstructuredNode::Parentheses(inner) => {
+                if next_index != 0 {
+                    panic!("index out of range for parens navigation")
                 }
 
                 inner.navigate_trace(step_path, trace)
@@ -155,15 +163,15 @@ impl UnstructuredNodeRoot {
 
             match right_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) => {
+                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) => {
                     // Navigate into its first/only slot, and start at the first item of the
                     // unstructured
                     path.push(0);
                     path.push(0);
                 },
 
-                // Anything else, we can just move past it
-                _ => path.offset(1),
+                // Token, we can just move past it
+                UnstructuredNode::Token(_) => path.offset(1),
             }
         }
 
@@ -194,7 +202,7 @@ impl UnstructuredNodeRoot {
 
             match left_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(n) | UnstructuredNode::Fraction(n, _) => {
+                UnstructuredNode::Sqrt(n) | UnstructuredNode::Fraction(n, _) | UnstructuredNode::Parentheses(n) => {
                     // Navigate into its first/only slot, and start at the first item of the
                     // unstructured
                     path.push(0);
@@ -202,7 +210,7 @@ impl UnstructuredNodeRoot {
                 },
 
                 // Anything else, nothing special needed
-                _ => (),
+                UnstructuredNode::Token(_) => (),
             }
         }
 
@@ -346,6 +354,9 @@ impl Upgradable for UnstructuredNode {
             UnstructuredNode::Sqrt(inner)
                 => Ok(StructuredNode::Sqrt(box inner.upgrade()?)),
 
+            UnstructuredNode::Parentheses(inner)
+                => Ok(StructuredNode::Parentheses(box inner.upgrade()?)),
+
             UnstructuredNode::Fraction(a, b)
                 => Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)),
 
@@ -370,6 +381,8 @@ impl Layoutable for UnstructuredNode {
                 => common::layout_sqrt(inner, renderer, path),
             UnstructuredNode::Fraction(top, bottom)
                 => common::layout_fraction(top, bottom, renderer, path),
+            UnstructuredNode::Parentheses(inner)
+                => common::layout_parentheses(inner, renderer, path),
         }
     }
 }

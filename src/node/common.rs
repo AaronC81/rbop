@@ -79,3 +79,40 @@ where T : Layoutable
         .merge_along_vertical_centre(renderer, &line_layout, MergeBaseline::OtherAsBaseline)
         .merge_along_vertical_centre(renderer, &bottom_layout, MergeBaseline::SelfAsBaseline)
 }
+
+pub fn layout_parentheses<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+where T : Layoutable
+{
+    // Lay out the inner item first
+    let mut path = if let Some(p) = path {
+        if p.next() == 0 {
+            Some(p.step())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
+    let inner_layout = inner.layout(renderer, (&mut path).as_mut());
+    let inner_area = inner_layout.area(renderer);
+
+    // Get glyphs for parentheses
+    let mut left_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::LeftParenthesis {
+        inner_height: inner_area.height,
+    });
+    let mut right_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::RightParenthesis {
+        inner_height: inner_area.height,
+    });
+
+    // Match the baselines for these glyphs with the inner baseline
+    left_paren_layout.baseline = inner_layout.baseline;
+    right_paren_layout.baseline = inner_layout.baseline;
+
+    // Merge the three
+    LayoutBlock::layout_horizontal(renderer, &[
+        left_paren_layout,
+        inner_layout,
+        right_paren_layout,
+    ])
+}

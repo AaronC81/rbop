@@ -1,4 +1,4 @@
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec};
 use rust_decimal::{Decimal, MathematicalOps, prelude::ToPrimitive};
 
 use crate::error::{Error, NodeError};
@@ -158,13 +158,14 @@ impl<'a> Parser<'a> {
 
             Ok(StructuredNode::Number(number))
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {
-            // Divisions can appear in unstructured nodes - upgrade the children
             self.advance();
             Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?))
         } else if let Some(UnstructuredNode::Sqrt(n)) = self.current() {
-            // Sqrt can appear in unstructured nodes - upgrade the child
             self.advance();
             Ok(StructuredNode::Sqrt(box n.upgrade()?))
+        } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
+            self.advance();
+            Ok(StructuredNode::Parentheses(box inner.upgrade()?))
         } else {
             Err(box NodeError("expected a unit".into()))
         }

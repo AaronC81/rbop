@@ -19,6 +19,7 @@ pub enum Token {
     Divide,
     Digit(u8),
     Point,
+    Variable(char),
 }
 
 /// An unstructured node is one which can be inputted by the user. Unstructured nodes have as little

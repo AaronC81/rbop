@@ -1,3 +1,4 @@
+use core::alloc::Layout;
 use core::cmp::max;
 use core::ops::Deref;
 
@@ -14,6 +15,7 @@ use crate::nav::NavPathNavigator;
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum StructuredNode {
     Number(Decimal),
+    Variable(char),
     Sqrt(Box<StructuredNode>),
     Add(Box<StructuredNode>, Box<StructuredNode>),
     Subtract(Box<StructuredNode>, Box<StructuredNode>),
@@ -77,7 +79,7 @@ impl StructuredNode {
                 StructuredNode::Subtract(l.clone(), box r)
             }
 
-            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_)
+            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_)
                 => self.clone(),
         })
     }
@@ -86,6 +88,7 @@ impl StructuredNode {
     pub fn evaluate(&self) -> Result<Decimal, Box<dyn Error>> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
+            StructuredNode::Variable(c) => Err(box MathsError("cannot evaluate variable".into())),
             StructuredNode::Sqrt(inner) =>
                 inner.evaluate()?.sqrt().ok_or(box MathsError("illegal sqrt".into())),
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
@@ -94,6 +97,58 @@ impl StructuredNode {
             StructuredNode::Divide(a, b) => Ok(a.evaluate()? / b.evaluate()?),
             StructuredNode::Parentheses(inner) => inner.evaluate(),
         }
+    }
+
+    /// Walks over all nodes in this tree.
+    pub fn walk(&self, func: &impl Fn(&StructuredNode)) {
+        func(self);
+        match self {
+            StructuredNode::Add(l, r)
+            | StructuredNode::Subtract(l, r)
+            | StructuredNode::Multiply(l, r)
+            | StructuredNode::Divide(l, r) => {
+                l.walk(func);
+                r.walk(func);
+            },
+            StructuredNode::Sqrt(inner) | StructuredNode::Parentheses(inner) => {
+                inner.walk(func);
+            },
+
+            StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
+        }
+    }
+
+    /// Walks over all nodes in this tree, allowing them to be mutated.
+    pub fn walk_mut(&mut self, func: &mut impl FnMut(&mut StructuredNode)) {
+        func(self);
+        match self {
+            StructuredNode::Add(l, r)
+            | StructuredNode::Subtract(l, r)
+            | StructuredNode::Multiply(l, r)
+            | StructuredNode::Divide(l, r) => {
+                l.walk_mut(func);
+                r.walk_mut(func);
+            },
+            StructuredNode::Sqrt(inner) | StructuredNode::Parentheses(inner) => {
+                inner.walk_mut(func);
+            },
+
+            StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
+        }
+    }    
+
+    /// Returns a clone of this node tree where all usages of a variable are
+    /// replaced with another set of nodes.
+    pub fn substitute_variable(&self, var_name: char, subst: &StructuredNode) -> StructuredNode {
+        let mut clone = self.clone();
+        clone.walk_mut(&mut |n| {
+            if let StructuredNode::Variable(actual_var_name) = n {
+                if *actual_var_name == var_name {
+                    *n = subst.clone();
+                }
+            }
+        });
+        clone
     }
 }
 
@@ -143,6 +198,8 @@ impl Layoutable for StructuredNode {
 
                 LayoutBlock::layout_horizontal(renderer, &glyph_layouts[..])
             },
+
+            StructuredNode::Variable(v) => LayoutBlock::from_glyph(renderer, Glyph::Variable { name: *v }),
 
             StructuredNode::Add(left, right) => layout_binop(renderer, Glyph::Add, left, right),
             StructuredNode::Subtract(left, right) => layout_binop(renderer, Glyph::Subtract, left, right),

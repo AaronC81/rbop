@@ -18,7 +18,7 @@ impl AsciiRenderer {
 impl Renderer for AsciiRenderer {
     fn size(&mut self, glyph: Glyph) -> Area {
         match glyph {
-            Glyph::Digit { .. } | Glyph::Point | Glyph::Add | Glyph::Subtract | Glyph::Multiply | Glyph::Divide => Area::square(1),
+            Glyph::Digit { .. } | Glyph::Point | Glyph::Variable { .. } | Glyph::Add | Glyph::Subtract | Glyph::Multiply | Glyph::Divide => Area::square(1),
 
             Glyph::Fraction { inner_width } => Area::new(inner_width, 1),
 
@@ -87,6 +87,7 @@ impl Renderer for AsciiRenderer {
                 self.put_char(char, point);
             },
             Glyph::Point => self.put_char('.', point),
+            Glyph::Variable { name } => self.put_char(name, point),
             Glyph::Add => self.put_char('+', point),
             Glyph::Subtract => self.put_char('-', point),
             Glyph::Multiply => self.put_char('*', point),

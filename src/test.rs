@@ -20,6 +20,7 @@ macro_rules! token {
     (*)             => { UnstructuredNode::Token(Token::Multiply) };
     (/)             => { UnstructuredNode::Token(Token::Divide) };
     (.)             => { UnstructuredNode::Token(Token::Point) };
+    (var $v:ident)  => { UnstructuredNode::Token(Token::Variable(stringify!($v).chars().nth(0).unwrap())) };
     ($x:literal)    => { UnstructuredNode::Token(Token::Digit($x)) };
 }
 
@@ -604,5 +605,33 @@ fn test_parentheses() {
             "1+|---|",
             "  \\(4)/"
         ]
+    )
+}
+
+#[test]
+fn test_variables() {
+    let nodes = uns_list!(
+        token!(var x),
+        token!(+),
+        UnstructuredNode::Fraction(
+            uns_list!(
+                token!(1),
+                token!(+),
+                token!(var x),
+            ),
+            uns_list!(
+                token!(var y),
+            )
+        )
+    );
+
+    assert_eq!(
+        nodes.upgrade()
+            .unwrap()
+            .substitute_variable('x', &StructuredNode::Number(dec!(9)))
+            .substitute_variable('y', &StructuredNode::Number(dec!(2)))
+            .evaluate()
+            .unwrap(),
+        dec!(14)
     )
 }

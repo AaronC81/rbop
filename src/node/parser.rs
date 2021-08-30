@@ -166,6 +166,9 @@ impl<'a> Parser<'a> {
         } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
             self.advance();
             Ok(StructuredNode::Parentheses(box inner.upgrade()?))
+        } else if let Some(Token::Variable(v)) = self.current_token() {
+            self.advance();
+            Ok(StructuredNode::Variable(v))
         } else {
             Err(box NodeError("expected a unit".into()))
         }

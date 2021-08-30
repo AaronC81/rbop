@@ -147,6 +147,8 @@ impl Area {
 pub enum Glyph {
     Digit { number: u8 },
     Point,
+
+    Variable { name: char },
     
     Add,
     Subtract,
@@ -172,6 +174,7 @@ impl From<Token> for Glyph {
             Token::Divide => Glyph::Divide,
             Token::Digit(d) => Glyph::Digit { number: d },
             Token::Point => Glyph::Point,
+            Token::Variable(c) => Glyph::Variable { name: c },
         }
     }
 }

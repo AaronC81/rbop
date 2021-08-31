@@ -650,6 +650,20 @@ fn test_implicit_multiply() {
         )
     );
 
+    // 0.5x = 0.5 * x
+    assert_eq!(
+        uns_list!(
+            token!(0),
+            token!(.),
+            token!(5),
+            token!(var x),
+        ).upgrade().unwrap(),
+        StructuredNode::Multiply(
+            box StructuredNode::Number(dec!(0.5)),
+            box StructuredNode::Variable('x'),
+        )
+    );
+
     // 2(1+x) = 2 * (1 + x)
     assert_eq!(
         uns_list!(

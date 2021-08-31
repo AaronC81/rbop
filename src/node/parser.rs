@@ -14,7 +14,14 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
-        self.parse_level1()
+        let result = self.parse_level1()?;
+
+        // Leftover tokens is an error
+        if self.index < self.nodes.len() {
+            Err(box NodeError("unexpected tokens at end of input".into()))
+        } else {
+            Ok(result)
+        }
     }
 
     fn advance(&mut self) {
@@ -122,36 +129,32 @@ impl<'a> Parser<'a> {
                 // Alright, this could have a decimal part - is there a digit after the point?
                 // (If not, that's fine, do nothing - we accept "3.")
                 if let Some(Token::Digit(_)) = self.current_token() {
-                    // Yes - recurse, without advancing (since we want this parser function to pick
-                    // up that first digit)
-                    let decimal_part = self.parse_level3()?;
-
-                    // The parse result must be an integer, otherwise the input may have been
-                    // something like "12.34.56" which is invalid
-                    if let StructuredNode::Number(dec_part) = decimal_part {
-                        if dec_part.fract() != Decimal::ZERO {
-                            return Err(box NodeError("multiple decimal points".into()))
+                    // Yes - collect decimal part
+                    let mut dec_part = Decimal::ZERO;
+                    while !self.eoi() {
+                        if let Some(Token::Digit(d)) = self.current_token() {
+                            dec_part *= Decimal::from(10);
+                            dec_part += Decimal::from(d);
+        
+                            self.advance();
+                        } else {
+                            break;
                         }
-                        if dec_part.is_sign_negative() {
-                            return Err(box NodeError("decimal part must be positive".into()))
-                        }
+                    }
 
-                        if dec_part != Decimal::ZERO {
-                            // Not sure what the best way to do this is - probably not this, but it
-                            // does work!
-                            // Example, for "123.45"
+                    if dec_part != Decimal::ZERO {
+                        // Not sure what the best way to do this is - probably not this, but it
+                        // does work!
+                        // Example, for "123.45"
 
-                            // 1. Get the "length" of the decimal part, e.g. "45" has length 2
-                            let length_of_decimal_part = dec_part.log10().floor() + Decimal::ONE;
-                            // 2. Multiply whole part by 10^length, = "12300."
-                            number *= Decimal::TEN.powd(length_of_decimal_part);
-                            // 3. Add decimal part, = "12345."
-                            number += dec_part;
-                            // 4. Shift point by length of decimal part, = "123.45"
-                            number.set_scale(number.scale() + length_of_decimal_part.to_u32().unwrap()).unwrap();
-                        }
-                    } else {
-                        return Err(box NodeError("expected number after decimal point".into()))
+                        // 1. Get the "length" of the decimal part, e.g. "45" has length 2
+                        let length_of_decimal_part = dec_part.log10().floor() + Decimal::ONE;
+                        // 2. Multiply whole part by 10^length, = "12300."
+                        number *= Decimal::TEN.powd(length_of_decimal_part);
+                        // 3. Add decimal part, = "12345."
+                        number += dec_part;
+                        // 4. Shift point by length of decimal part, = "123.45"
+                        number.set_scale(number.scale() + length_of_decimal_part.to_u32().unwrap()).unwrap();
                     }
                 }
             }

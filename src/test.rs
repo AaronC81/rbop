@@ -635,3 +635,60 @@ fn test_variables() {
         dec!(14)
     )
 }
+
+#[test]
+fn test_implicit_multiply() {
+    // 2x = 2 * x
+    assert_eq!(
+        uns_list!(
+            token!(2),
+            token!(var x),
+        ).upgrade().unwrap(),
+        StructuredNode::Multiply(
+            box StructuredNode::Number(dec!(2)),
+            box StructuredNode::Variable('x'),
+        )
+    );
+
+    // 2(1+x) = 2 * (1 + x)
+    assert_eq!(
+        uns_list!(
+            token!(2),
+            UnstructuredNode::Parentheses(uns_list!(
+                token!(1),
+                token!(+),
+                token!(var x),
+            )),
+        ).upgrade().unwrap(),
+        StructuredNode::Multiply(
+            box StructuredNode::Number(dec!(2)),
+            box StructuredNode::Parentheses(
+                box StructuredNode::Add(
+                    box StructuredNode::Number(dec!(1)),
+                    box StructuredNode::Variable('x'),
+                )
+            )
+        )
+    );
+
+    // xyz + 2 = ((x * y) * z) + 2
+    assert_eq!(
+        uns_list!(
+            token!(var x),
+            token!(var y),
+            token!(var z),
+            token!(+),
+            token!(2),
+        ).upgrade().unwrap(),
+        StructuredNode::Add(
+            box StructuredNode::Multiply(
+                box StructuredNode::Variable('x'),
+                box StructuredNode::Multiply(
+                    box StructuredNode::Variable('y'),
+                    box StructuredNode::Variable('z'),
+                ),
+            ),
+            box StructuredNode::Number(dec!(2)),
+        )
+    );
+}

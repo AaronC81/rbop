@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
             parsed_number_is_negative = !parsed_number_is_negative;
         }
 
-        if let Some(Token::Digit(d)) = self.current_token() {
+        let mut result = if let Some(Token::Digit(d)) = self.current_token() {
             // Parse a number made of digits
             let mut number: Decimal = d.into();
             self.advance();
@@ -156,21 +156,38 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            Ok(StructuredNode::Number(number))
+            StructuredNode::Number(number)
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {
             self.advance();
-            Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?))
+            StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)
         } else if let Some(UnstructuredNode::Sqrt(n)) = self.current() {
             self.advance();
-            Ok(StructuredNode::Sqrt(box n.upgrade()?))
+            StructuredNode::Sqrt(box n.upgrade()?)
         } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
             self.advance();
-            Ok(StructuredNode::Parentheses(box inner.upgrade()?))
+            StructuredNode::Parentheses(box inner.upgrade()?)
         } else if let Some(Token::Variable(v)) = self.current_token() {
             self.advance();
-            Ok(StructuredNode::Variable(v))
+            StructuredNode::Variable(v)
         } else {
-            Err(box NodeError("expected a unit".into()))
+            return Err(box NodeError("expected a unit".into()))
+        };
+
+        // Construct implicit multiplications as long as the next token is one which can be
+        // implicitly multipled with. "2x" will initially parse as "2", then this pass can pick up
+        // the "x" and form a multiplication.
+        while matches!(
+            self.current(),
+            Some(
+                UnstructuredNode::Fraction(_, _)
+                | UnstructuredNode::Sqrt(_)
+                | UnstructuredNode::Parentheses(_)
+                | UnstructuredNode::Token(Token::Variable(_) | Token::Digit(_))
+            )
+        ) {
+            result = StructuredNode::Multiply(box result, box self.parse_level3()?);
         }
+
+        Ok(result)
     }
 }

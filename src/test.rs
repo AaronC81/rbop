@@ -137,6 +137,10 @@ fn test_decimals() {
         tokens!(1 2 3 . 4 5).upgrade().unwrap(),
         StructuredNode::Number(dec!(123.45))
     );
+    assert_eq!(
+        tokens!(1 2 . 0 0 0 0 1 3).upgrade().unwrap(),
+        StructuredNode::Number(dec!(12.000013))
+    );
 
     // Rendering as unstructured
     assert_eq!(

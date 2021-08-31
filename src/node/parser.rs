@@ -1,5 +1,5 @@
 use alloc::{boxed::Box, vec};
-use rust_decimal::{Decimal, MathematicalOps, prelude::ToPrimitive};
+use rust_decimal::{Decimal, MathematicalOps, prelude::{FromPrimitive, ToPrimitive}};
 
 use crate::error::{Error, NodeError};
 
@@ -130,11 +130,20 @@ impl<'a> Parser<'a> {
                 // (If not, that's fine, do nothing - we accept "3.")
                 if let Some(Token::Digit(_)) = self.current_token() {
                     // Yes - collect decimal part
+                    // We have to keep the number of leading 0s separately too, since 0 * 10 + 0 is
+                    // a no-op
                     let mut dec_part = Decimal::ZERO;
+                    let mut collect_leading_zeros = true;
+                    let mut leading_zeros_count = 0;
                     while !self.eoi() {
                         if let Some(Token::Digit(d)) = self.current_token() {
-                            dec_part *= Decimal::from(10);
-                            dec_part += Decimal::from(d);
+                            if collect_leading_zeros && d == 0 {
+                                leading_zeros_count += 1;
+                            } else {
+                                collect_leading_zeros = false;
+                                dec_part *= Decimal::from(10);
+                                dec_part += Decimal::from(d);
+                            }
         
                             self.advance();
                         } else {
@@ -148,7 +157,10 @@ impl<'a> Parser<'a> {
                         // Example, for "123.45"
 
                         // 1. Get the "length" of the decimal part, e.g. "45" has length 2
-                        let length_of_decimal_part = dec_part.log10().floor() + Decimal::ONE;
+                        let length_of_decimal_part =
+                            dec_part.log10().floor()
+                            + Decimal::ONE
+                            + Decimal::from_i32(leading_zeros_count).unwrap();
                         // 2. Multiply whole part by 10^length, = "12300."
                         number *= Decimal::TEN.powd(length_of_decimal_part);
                         // 3. Add decimal part, = "12345."

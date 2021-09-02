@@ -43,6 +43,12 @@ pub struct UnstructuredNodeRoot {
     pub root: UnstructuredNodeList
 }
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum MoveResult {
+    MovedWithin,
+    MovedOut,
+}
+
 pub trait Navigable {
     /// Given a navigation path, returns the node from following that path, and the index into that
     /// node. The navigation path will always terminate on an unstructured node list, so the final
@@ -218,7 +224,13 @@ impl UnstructuredNodeRoot {
         self.ensure_cursor_visible(path, renderer, viewport);
     }
 
-    fn move_vertically(&mut self, path: &mut NavPath, direction: MoveVerticalDirection, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
+    fn move_vertically(
+        &mut self,
+        path: &mut NavPath,
+        direction: MoveVerticalDirection,
+        renderer: &mut impl Renderer,
+        viewport: Option<&mut Viewport>
+    ) -> MoveResult {
         // Say you're in a sqrt at the top of a fraction, and you press down, you'd expect it to
         // move to the bottom of the fraction.
         // That's why we need to check up the entire nav path, looking for fractions.
@@ -239,6 +251,8 @@ impl UnstructuredNodeRoot {
                 }
             }
         );
+
+        let mut moved_within = false;
 
         // Iterate reversed, since we're looking from the inside out
         for (i, item) in nav_items.iter().rev().enumerate() {
@@ -267,6 +281,7 @@ impl UnstructuredNodeRoot {
                     path.pop(i + 1);
                     path.push(index_to_move_to);
                     path.push(new_index);
+                    moved_within = true;
                     break;
                 } else {
                     // Keep looking
@@ -275,16 +290,22 @@ impl UnstructuredNodeRoot {
         }
 
         self.ensure_cursor_visible(path, renderer, viewport);
+
+        if moved_within {
+            MoveResult::MovedWithin
+        } else {
+            MoveResult::MovedOut
+        }
     }
     
     /// Modifies the given navigation path to move the cursor down.
-    pub fn move_down(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
-        self.move_vertically(path, MoveVerticalDirection::Down, renderer, viewport);
+    pub fn move_down(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) -> MoveResult {
+        self.move_vertically(path, MoveVerticalDirection::Down, renderer, viewport)
     }
 
     /// Modifies the given navigation path to move the cursor up.
-    pub fn move_up(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) {
-        self.move_vertically(path, MoveVerticalDirection::Up, renderer, viewport);
+    pub fn move_up(&mut self, path: &mut NavPath, renderer: &mut impl Renderer, viewport: Option<&mut Viewport>) -> MoveResult {
+        self.move_vertically(path, MoveVerticalDirection::Up, renderer, viewport)
     }
 
     /// Inserts the given node at the cursor position, and moves the cursor accordingly.

@@ -1,6 +1,6 @@
 use core::str::FromStr;
 
-use crate::node::unstructured::{Navigable, UnstructuredNodeRoot, Upgradable};
+use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::render::{Area, CalculatedPoint, Viewport};
 use crate::{UnstructuredItem, UnstructuredNodeList};
 use crate::nav::NavPath;
@@ -46,6 +46,14 @@ macro_rules! render {
 
 macro_rules! dec {
     ($l:literal) => { Decimal::from_str(stringify!($l)).unwrap() };
+}
+
+macro_rules! reserialize {
+    ($e:expr) => {
+        UnstructuredNodeRoot::deserialize(
+            &mut $e.serialize().into_iter()
+        ).unwrap()
+    };
 }
 
 /// ```text
@@ -708,5 +716,27 @@ fn test_implicit_multiply() {
             ),
             box StructuredNode::Number(dec!(2)),
         )
+    );
+}
+
+#[test]
+fn test_serialize() {
+    // Core stuff
+    assert_eq!(
+        reserialize!(complex_unstructured_expression()),
+        complex_unstructured_expression(),
+    );
+
+    // Variables
+    let e = UnstructuredNodeRoot { root: uns_list!(
+        token!(var x),
+        token!(+),
+        token!(2),
+        token!(+),
+        token!(var y),
+    ) };
+    assert_eq!(
+        reserialize!(e),
+        e
     );
 }

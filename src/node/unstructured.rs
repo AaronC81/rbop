@@ -1,4 +1,4 @@
-use core::cmp::max;
+use core::{cmp::max, convert::TryFrom};
 
 use alloc::{vec::Vec, vec, boxed::Box};
 use rust_decimal::Decimal;
@@ -499,5 +499,158 @@ impl<'a> Layoutable for UnstructuredItem<'a> {
             UnstructuredItem::Node(node) => node.layout(renderer, path),
             UnstructuredItem::List(children) => children.layout(renderer, path),
         }
+    }
+}
+
+pub trait Serializable where Self: Sized {
+    fn serialize(&self) -> Vec<u8>;
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self>;
+}
+
+impl<T : num_traits::PrimInt> Serializable for T {
+    // Numbers are only used for counting here, and it's quite unlikely we'll get any over a byte
+    // large. So, numbers are serialized using a funky variable-length representation:
+    //   0x02 = 2
+    //   0xFE = 254
+    //   0xFF 0x00 = 255
+    //   0xFF 0x02 = 257
+    //   0xFF 0xFF 0x02 = 512
+    // 0xFF is always followed by another byte which is added to the 0xFF.
+    fn serialize(&self) -> Vec<u8> {
+        if self < &Self::zero() { panic!("cannot serialize negative numbers"); }
+
+        let mut result = vec![];
+        let mut current = *self;
+        while current >= Self::from(0xFF).unwrap() {
+            current = current - Self::from(0xFF).unwrap();
+            result.push(0xFF);
+        }
+        result.push(num_traits::cast(current).unwrap());
+
+        result
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        let mut result = Self::zero();
+
+        loop {
+            let byte = bytes.next()?;
+            result = result + Self::from(byte).unwrap();
+            if byte != 0xFF { break; }
+        }
+
+        Some(result)
+    }
+}
+
+impl Serializable for UnstructuredNodeRoot {
+    fn serialize(&self) -> Vec<u8> {
+        self.root.serialize()
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        Some(UnstructuredNodeRoot {
+            root: UnstructuredNodeList::deserialize(bytes)?
+        })
+    }
+}
+
+impl Serializable for UnstructuredNode {
+    fn serialize(&self) -> Vec<u8> {
+        match self {
+            UnstructuredNode::Token(t) => {
+                let mut token_bytes = t.serialize();
+                if token_bytes[0] > 0b01111111 { panic!(); }
+
+                token_bytes[0] |= 0b10000000;
+                token_bytes
+            },
+            UnstructuredNode::Sqrt(i) => {
+                let mut n = vec![1];
+                n.append(&mut i.serialize());
+                n
+            },
+            UnstructuredNode::Fraction(t, b) => {
+                let mut n = vec![2];
+                n.append(&mut t.serialize());
+                n.append(&mut b.serialize());
+                n
+            }
+            UnstructuredNode::Parentheses(i) => {
+                let mut n = vec![3];
+                n.append(&mut i.serialize());
+                n
+            },
+        }
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        let first_byte = bytes.next()?;
+        match first_byte {
+            _ if first_byte & 0b10000000 > 0 =>
+                Some(UnstructuredNode::Token(
+                    Token::deserialize(&mut vec![first_byte & 0b01111111]
+                        .into_iter()
+                        .chain(bytes))?)
+                ),
+            1 => Some(UnstructuredNode::Sqrt(UnstructuredNodeList::deserialize(bytes)?)),
+            2 => Some(UnstructuredNode::Fraction(
+                UnstructuredNodeList::deserialize(bytes)?,
+                UnstructuredNodeList::deserialize(bytes)?,
+            )),
+            3 => Some(UnstructuredNode::Parentheses(UnstructuredNodeList::deserialize(bytes)?)),
+
+            _ => None,
+        }
+    }
+}
+
+impl Serializable for UnstructuredNodeList {
+    fn serialize(&self) -> Vec<u8> {
+        let mut result = vec![];
+        result.append(&mut self.items.len().serialize());
+        for item in &self.items {
+            result.append(&mut item.serialize());
+        }
+        result
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        let len = usize::deserialize(bytes)?;
+        let mut result = vec![];
+        for _ in 0..len {
+            result.push(UnstructuredNode::deserialize(bytes)?);
+        }
+        Some(UnstructuredNodeList { items: result })
+    }
+}
+
+impl Serializable for Token {
+    fn serialize(&self) -> Vec<u8> {
+        vec![match self {
+            Token::Add => 1,
+            Token::Subtract => 2,
+            Token::Multiply => 3,
+            Token::Divide => 4,
+            Token::Digit(d) => 5 + *d,
+            Token::Point => 15,
+            Token::Variable(c) => return vec![16, *c as u8],
+        }]
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        let byte = bytes.next()?;
+        Some(match byte {
+            1 => Token::Add,
+            2 => Token::Subtract,
+            3 => Token::Multiply,
+            4 => Token::Divide,
+            5..=14 => Token::Digit(byte - 5),
+            15 => Token::Point,
+            16 => Token::Variable(bytes.next()? as char),
+
+            _ => return None,
+        })
     }
 }

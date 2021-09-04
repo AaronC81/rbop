@@ -391,6 +391,13 @@ pub trait Renderer {
     /// Initialises the graphics surface and draws a node tree onto it.
     fn draw_all(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>, viewport: Option<&Viewport>) -> LayoutBlock where Self: Sized {
         let layout = self.layout(root, path); 
+        self.draw_all_by_layout(&layout, viewport);
+        layout
+    }
+
+    /// Initializes the graphics surface and draws a node tree onto it, assuming that a layout has
+    /// already been calculated.
+    fn draw_all_by_layout(&mut self, layout: &LayoutBlock, viewport: Option<&Viewport>) where Self: Sized {
         let area = if let Some(v) = viewport {
             v.size
         } else {
@@ -403,8 +410,6 @@ pub trait Renderer {
         for glyph in viewport_glyphs {
             self.draw(glyph);
         }
-
-        layout
     }
 
     /// Returns the visibility of the cursor when rendering a set of nodes in a viewport.

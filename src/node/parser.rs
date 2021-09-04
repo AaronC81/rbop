@@ -1,5 +1,6 @@
-use alloc::{boxed::Box, vec};
-use rust_decimal::{Decimal, MathematicalOps, prelude::{FromPrimitive, ToPrimitive}};
+use alloc::{boxed::Box, string::ToString, vec};
+use num_traits::Zero;
+use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}};
 
 use crate::error::{Error, NodeError};
 
@@ -132,7 +133,7 @@ impl<'a> Parser<'a> {
                     // Yes - collect decimal part
                     // We have to keep the number of leading 0s separately too, since 0 * 10 + 0 is
                     // a no-op
-                    let mut dec_part = Decimal::ZERO;
+                    let mut dec_part = Decimal::zero();
                     let mut collect_leading_zeros = true;
                     let mut leading_zeros_count = 0;
                     while !self.eoi() {
@@ -151,18 +152,18 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    if dec_part != Decimal::ZERO {
+                    if dec_part != Decimal::zero() {
                         // Not sure what the best way to do this is - probably not this, but it
                         // does work!
                         // Example, for "123.45"
 
                         // 1. Get the "length" of the decimal part, e.g. "45" has length 2
                         let length_of_decimal_part =
-                            dec_part.log10().floor()
-                            + Decimal::ONE
-                            + Decimal::from_i32(leading_zeros_count).unwrap();
+                            // TODO: implement proper log10
+                            dec_part.to_string().len()
+                            + leading_zeros_count;
                         // 2. Multiply whole part by 10^length, = "12300."
-                        number *= Decimal::TEN.powd(length_of_decimal_part);
+                        number *= Decimal::from_u8(10).unwrap().powi(length_of_decimal_part as u64);
                         // 3. Add decimal part, = "12345."
                         number += dec_part;
                         // 4. Shift point by length of decimal part, = "123.45"

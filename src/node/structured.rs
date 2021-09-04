@@ -5,7 +5,8 @@ use core::ops::Deref;
 use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::vec::Vec;
-use rust_decimal::{Decimal, MathematicalOps};
+use num_traits::Zero;
+use rust_decimal::{Decimal};
 
 use crate::error::{Error, MathsError};
 use crate::node::common;
@@ -171,7 +172,7 @@ impl Layoutable for StructuredNode {
     fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
         match self {
             StructuredNode::Number(mut number) => {
-                let negative = number < Decimal::ZERO;
+                let negative = number < Decimal::zero();
                 if negative {
                     number = -number;
                 }

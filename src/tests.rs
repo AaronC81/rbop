@@ -748,6 +748,6 @@ fn bench_unstructured_layout(b: &mut Bencher) {
     let mut ascii_renderer = AsciiRenderer::default();
 
     b.iter(|| {
-        tree.layout(&mut ascii_renderer, None);
+        black_box(tree.layout(&mut ascii_renderer, None));
     });
 }

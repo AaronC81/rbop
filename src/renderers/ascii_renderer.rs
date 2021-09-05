@@ -49,11 +49,11 @@ impl Renderer for AsciiRenderer {
                 let mut preserve_this_glyph = false;
 
                 // Re-align and shorten a left-clipped fraction line
-                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph {
+                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph.glyph {
                     if left_clip > 0 {
                         viewport_glyph.glyph = Glyph::Fraction {
                             inner_width: inner_width - left_clip
-                        };
+                        }.to_sized(self);
                         viewport_glyph.point.x = 0;
 
                         preserve_this_glyph = true;
@@ -62,11 +62,11 @@ impl Renderer for AsciiRenderer {
 
                 // Shorten a right-clipped fraction line
                 // (The if-let binding is repeated to get a possibly updated inner_width)
-                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph {
+                if let Glyph::Fraction { inner_width } = viewport_glyph.glyph.glyph {
                     if right_clip > 0 {
                         viewport_glyph.glyph = Glyph::Fraction {
                             inner_width: inner_width - right_clip
-                        };
+                        }.to_sized(self);
 
                         preserve_this_glyph = true;
                     }
@@ -81,7 +81,7 @@ impl Renderer for AsciiRenderer {
 
         let point = viewport_glyph.point;
 
-        match viewport_glyph.glyph {
+        match viewport_glyph.glyph.glyph {
             Glyph::Digit { number } => {
                 let char = number.to_string().chars().next().unwrap();
                 self.put_char(char, point);

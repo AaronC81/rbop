@@ -122,7 +122,7 @@ pub enum ViewportVisibility {
 /// A glyph in a viewport.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ViewportGlyph {
-    pub glyph: Glyph,
+    pub glyph: SizedGlyph,
     pub point: ViewportPoint,
     pub visibility: ViewportVisibility,
 }
@@ -180,16 +180,29 @@ impl From<Token> for Glyph {
 }
 
 impl Glyph {
-    /// Returns the offset which should be applied to the y component of the `glyph` to vertically
-    /// centre it in a container of height `height`.
-    fn vertical_centre_glyph(&self, renderer: &mut impl Renderer, height: Dimension) -> Dimension {
-        (height - renderer.size(*self).height) / 2
+    pub fn to_sized(self, renderer: &mut impl Renderer) -> SizedGlyph {
+        SizedGlyph::from_glyph(self, renderer)
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct SizedGlyph {
+    pub glyph: Glyph,
+    pub area: Area,
+}
+
+impl SizedGlyph {
+    pub fn from_glyph(glyph: Glyph, renderer: &mut impl Renderer) -> Self {
+        SizedGlyph {
+            glyph,
+            area: renderer.size(glyph),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct LayoutBlock {
-    pub glyphs: Vec<(Glyph, CalculatedPoint)>,
+    pub glyphs: Vec<(SizedGlyph, CalculatedPoint)>,
     pub baseline: Dimension,
 }
 
@@ -207,7 +220,7 @@ impl LayoutBlock {
     /// glyph.
     pub fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
         LayoutBlock {
-            glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
+            glyphs: vec![(glyph.to_sized(renderer), CalculatedPoint { x: 0, y: 0 })],
             baseline: renderer.size(glyph).height / 2,
         }
     }
@@ -217,7 +230,7 @@ impl LayoutBlock {
         let mut height = 0;
 
         for (glyph, point) in &self.glyphs {
-            let size = renderer.size(*glyph);
+            let size = glyph.area;
             let ex = point.x + size.width;
             let ey = point.y + size.height;
             if ex > width { width = ex }
@@ -355,7 +368,7 @@ impl LayoutBlock {
                     glyph: *g,
                     point: viewport_point,
                     visibility: if let Some(viewport) = viewport {
-                        viewport.visibility(&viewport_point, &renderer.size(*g))
+                        viewport.visibility(&viewport_point, &g.area)
                     } else {
                         ViewportVisibility::Visible
                     }, 
@@ -418,7 +431,7 @@ pub trait Renderer {
         let viewport_glyphs = layout.for_viewport(self, viewport);
 
         for glyph in viewport_glyphs {
-            if let ViewportGlyph { glyph: Glyph::Cursor { .. }, visibility, .. } = glyph {
+            if let ViewportGlyph { glyph: SizedGlyph { glyph: Glyph::Cursor { .. }, .. }, visibility, .. } = glyph {
                 return visibility
             }
         }

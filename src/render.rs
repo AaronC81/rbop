@@ -237,7 +237,7 @@ impl LayoutBlock {
         }
     }
 
-    fn area(glyphs: &Vec<(SizedGlyph, CalculatedPoint)>) -> Area {
+    fn area(glyphs: &[(SizedGlyph, CalculatedPoint)]) -> Area {
         let mut width = 0;
         let mut height = 0;
 

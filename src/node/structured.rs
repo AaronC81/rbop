@@ -159,9 +159,9 @@ fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, left: &StructuredNod
 
     let left_layout = left.layout(renderer, None);
     let binop_layout = LayoutBlock::from_glyph(renderer, glyph)
-        .move_right_of_other(renderer, &left_layout);
+        .move_right_of_other(&left_layout);
     let right_layout = right.layout(renderer, None)
-        .move_right_of_other(renderer, &binop_layout);
+        .move_right_of_other(&binop_layout);
 
     left_layout
         .merge_along_baseline(&binop_layout)
@@ -197,7 +197,7 @@ impl Layoutable for StructuredNode {
                     )
                 }
 
-                LayoutBlock::layout_horizontal(renderer, &glyph_layouts[..])
+                LayoutBlock::layout_horizontal(&glyph_layouts[..])
             },
 
             StructuredNode::Variable(v) => LayoutBlock::from_glyph(renderer, Glyph::Variable { name: *v }),

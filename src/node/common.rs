@@ -31,7 +31,6 @@ where T : Layoutable
 
     // Merge the two
     sqrt_symbol_layout.merge_in_place(
-        renderer, 
         &inner_layout.offset(x_offset, y_offset),
         MergeBaseline::OtherAsBaseline
     )
@@ -70,14 +69,14 @@ where T : Layoutable
     );
     let line_layout = LayoutBlock::from_glyph(renderer, Glyph::Fraction {
         inner_width: line_width
-    }).move_below_other(renderer, &top_layout);
+    }).move_below_other(&top_layout);
 
     let bottom_layout = bottom_layout
-        .move_below_other(renderer, &line_layout);
+        .move_below_other(&line_layout);
 
     top_layout
-        .merge_along_vertical_centre(renderer, &line_layout, MergeBaseline::OtherAsBaseline)
-        .merge_along_vertical_centre(renderer, &bottom_layout, MergeBaseline::SelfAsBaseline)
+        .merge_along_vertical_centre(&line_layout, MergeBaseline::OtherAsBaseline)
+        .merge_along_vertical_centre(&bottom_layout, MergeBaseline::SelfAsBaseline)
 }
 
 pub fn layout_parentheses<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
@@ -110,7 +109,7 @@ where T : Layoutable
     right_paren_layout.baseline = inner_layout.baseline;
 
     // Merge the three
-    LayoutBlock::layout_horizontal(renderer, &[
+    LayoutBlock::layout_horizontal(&[
         left_paren_layout,
         inner_layout,
         right_paren_layout,

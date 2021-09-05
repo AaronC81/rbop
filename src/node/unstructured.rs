@@ -488,7 +488,7 @@ impl Layoutable for UnstructuredNodeList {
             layouts.insert(idx, cursor_layout)
         }
 
-        LayoutBlock::layout_horizontal(renderer, &layouts[..])
+        LayoutBlock::layout_horizontal(&layouts[..])
 
     }
 }

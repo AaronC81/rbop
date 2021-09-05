@@ -288,7 +288,7 @@ impl LayoutBlock {
     }
 
     /// Merges the glyphs of two layout blocks along their vertical centre.
-    pub fn merge_along_vertical_centre(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+    pub fn merge_along_vertical_centre(&self, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
         // Whose is wider? (i.e., who has the greatest vertical centre)
         // The points can't go negative, so we'll add to the glyphs of the smaller layout block
         let self_centre = self.area.width / 2;
@@ -318,7 +318,7 @@ impl LayoutBlock {
     }
 
     /// Merge the the glyphs of two layout blocks exactly, without moving them.
-    pub fn merge_in_place(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
+    pub fn merge_in_place(&self, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
         let glyphs =
             // Re-align the lesser-baselined glyphs
             self.glyphs
@@ -336,18 +336,18 @@ impl LayoutBlock {
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly to the right of another layout block.
-    pub fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+    pub fn move_right_of_other(&self, other: &LayoutBlock) -> LayoutBlock {
         self.offset(other.area.width, 0)
     }
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly below another layout block.
-    pub fn move_below_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
+    pub fn move_below_other(&self, other: &LayoutBlock) -> LayoutBlock {
         self.offset(0, other.area.height)
     }
 
     /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
-    pub fn layout_horizontal(renderer: &mut impl Renderer, layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
+    pub fn layout_horizontal(layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
     {
         let mut block = LayoutBlock::empty();
 
@@ -355,14 +355,14 @@ impl LayoutBlock {
         // each glyph
         for layout in layouts {
             block = block.merge_along_baseline(
-                &layout.move_right_of_other(renderer, &block),
+                &layout.move_right_of_other(&block),
             );
         }
 
         block
     }
 
-    pub fn for_viewport(&self, renderer: &mut impl Renderer, viewport: Option<&Viewport>) -> Vec<ViewportGlyph> {
+    pub fn for_viewport(&self, viewport: Option<&Viewport>) -> Vec<ViewportGlyph> {
         self.glyphs
             .iter()
             .map(|(g, p)| {
@@ -420,7 +420,7 @@ pub trait Renderer {
             layout.area
         };
 
-        let viewport_glyphs = layout.for_viewport(self, viewport);
+        let viewport_glyphs = layout.for_viewport(viewport);
 
         self.init(area);
         for glyph in viewport_glyphs {
@@ -431,7 +431,7 @@ pub trait Renderer {
     /// Returns the visibility of the cursor when rendering a set of nodes in a viewport.
     fn cursor_visibility(&mut self, root: &impl Layoutable, path: &mut NavPathNavigator, viewport: Option<&Viewport>) -> ViewportVisibility where Self: Sized {
         let layout = self.layout(root, Some(path)); 
-        let viewport_glyphs = layout.for_viewport(self, viewport);
+        let viewport_glyphs = layout.for_viewport(viewport);
 
         for glyph in viewport_glyphs {
             if let ViewportGlyph { glyph: SizedGlyph { glyph: Glyph::Cursor { .. }, .. }, visibility, .. } = glyph {

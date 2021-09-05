@@ -6,14 +6,18 @@
 #![no_std]
 extern crate core;
 extern crate alloc;
+
+#[cfg(test)]
 extern crate test;
 
 pub mod error;
 pub mod node;
 pub mod nav;
-pub mod tests;
 pub mod render;
 pub mod renderers;
+
+#[cfg(test)]
+pub mod tests;
 
 pub use crate::node::{
     unstructured::{UnstructuredNode, Token, UnstructuredNodeList, UnstructuredItem},

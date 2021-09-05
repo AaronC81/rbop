@@ -1,7 +1,7 @@
 use core::str::FromStr;
 
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
-use crate::render::{Area, CalculatedPoint, Viewport};
+use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
 use crate::{UnstructuredItem, UnstructuredNodeList};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
@@ -9,6 +9,7 @@ use crate::renderers::AsciiRenderer;
 use alloc::string::{String, ToString};
 use alloc::{vec, vec::Vec};
 use rust_decimal::Decimal;
+use test::{Bencher, black_box};
 
 macro_rules! uns_list {
     ($($x:expr),* $(,)?) => { UnstructuredNodeList { items: vec![ $($x),* ] } };
@@ -739,4 +740,14 @@ fn test_serialize() {
         reserialize!(e),
         e
     );
+}
+
+#[bench]
+fn bench_unstructured_layout(b: &mut Bencher) {
+    let tree = complex_unstructured_expression();
+    let mut ascii_renderer = AsciiRenderer::default();
+
+    b.iter(|| {
+        tree.layout(&mut ascii_renderer, None);
+    });
 }

@@ -470,13 +470,13 @@ impl Layoutable for UnstructuredNodeList {
                 let after = &layouts[idx];
                 let before = &layouts[idx - 1];
 
-                if after.area(renderer).height > before.area(renderer).height {
+                if after.area.height > before.area.height {
                     after
                 } else {
                     before
                 }
             };
-            let cursor_height = cursor_match_layout.area(renderer).height;
+            let cursor_height = cursor_match_layout.area.height;
             let cursor_baseline = cursor_match_layout.baseline;
 
             // Hackily match the baseline

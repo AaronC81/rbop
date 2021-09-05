@@ -118,11 +118,11 @@ pub fn match_vertical_cursor_points(
     // Work out complete widths
     let from_total_width: u64 = from_layouts
         .iter()
-        .map(|x| x.area(renderer).width)
+        .map(|x| x.area.width)
         .sum();
     let to_total_width: u64 = to_layouts
         .iter()
-        .map(|x| x.area(renderer).width)
+        .map(|x| x.area.width)
         .sum();
 
     // Calculate some offsets to vertically centre them
@@ -138,13 +138,13 @@ pub fn match_vertical_cursor_points(
     let mut from_boundary_points = vec![from_offset];
     for layout in &from_layouts {
         from_boundary_points.push(
-            from_boundary_points.last().unwrap() + layout.area(renderer).width
+            from_boundary_points.last().unwrap() + layout.area.width
         )
     }
     let mut to_boundary_points = vec![to_offset];
     for layout in &to_layouts {
         to_boundary_points.push(
-            to_boundary_points.last().unwrap() + layout.area(renderer).width
+            to_boundary_points.last().unwrap() + layout.area.width
         )
     }
     

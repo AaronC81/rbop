@@ -17,7 +17,7 @@ where T : Layoutable
     };
     
     let inner_layout = inner.layout(renderer, (&mut path).as_mut());
-    let inner_area = inner_layout.area(renderer);
+    let inner_area = inner_layout.area;
 
     // Get glyph size for the sqrt symbol
     let sqrt_symbol_layout = LayoutBlock::from_glyph(renderer, Glyph::Sqrt {
@@ -26,8 +26,8 @@ where T : Layoutable
 
     // We assume that the inner layout goes in the very bottom right, so work out the
     // offset required based on the difference of the two areas
-    let x_offset = sqrt_symbol_layout.area(renderer).width - inner_layout.area(renderer).width;
-    let y_offset = sqrt_symbol_layout.area(renderer).height - inner_layout.area(renderer).height;
+    let x_offset = sqrt_symbol_layout.area.width - inner_layout.area.width;
+    let y_offset = sqrt_symbol_layout.area.height - inner_layout.area.height;
 
     // Merge the two
     sqrt_symbol_layout.merge_in_place(
@@ -65,8 +65,8 @@ where T : Layoutable
 
     // The fraction line should be the widest of the two
     let line_width = max(
-        top_layout.area(renderer).width,
-        bottom_layout.area(renderer).width,
+        top_layout.area.width,
+        bottom_layout.area.width,
     );
     let line_layout = LayoutBlock::from_glyph(renderer, Glyph::Fraction {
         inner_width: line_width
@@ -95,7 +95,7 @@ where T : Layoutable
     };
     
     let inner_layout = inner.layout(renderer, (&mut path).as_mut());
-    let inner_area = inner_layout.area(renderer);
+    let inner_area = inner_layout.area;
 
     // Get glyphs for parentheses
     let mut left_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::LeftParenthesis {

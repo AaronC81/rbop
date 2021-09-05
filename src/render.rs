@@ -204,6 +204,7 @@ impl SizedGlyph {
 pub struct LayoutBlock {
     pub glyphs: Vec<(SizedGlyph, CalculatedPoint)>,
     pub baseline: Dimension,
+    pub area: Area,
 }
 
 pub enum MergeBaseline {
@@ -213,23 +214,34 @@ pub enum MergeBaseline {
 
 impl LayoutBlock {
     pub fn empty() -> LayoutBlock {
-        LayoutBlock { glyphs: vec![], baseline: 0 }
+        LayoutBlock { glyphs: vec![], baseline: 0, area: Area::new(0, 0) }
+    }
+
+    pub fn new(glyphs: Vec<(SizedGlyph, CalculatedPoint)>, baseline: Dimension) -> Self {
+        let area =  Self::area(&glyphs);
+        Self {
+            glyphs,
+            baseline,
+            area,
+        }
     }
 
     /// Creates a new layout block with one glyph at the origin. The baseline is the centre of this
     /// glyph.
     pub fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
+        let glyph = glyph.to_sized(renderer);
         LayoutBlock {
-            glyphs: vec![(glyph.to_sized(renderer), CalculatedPoint { x: 0, y: 0 })],
-            baseline: renderer.size(glyph).height / 2,
+            glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
+            baseline: glyph.area.height / 2,
+            area: glyph.area,
         }
     }
 
-    pub fn area(&self, renderer: &mut impl Renderer) -> Area {
+    fn area(glyphs: &Vec<(SizedGlyph, CalculatedPoint)>) -> Area {
         let mut width = 0;
         let mut height = 0;
 
-        for (glyph, point) in &self.glyphs {
+        for (glyph, point) in glyphs {
             let size = glyph.area;
             let ex = point.x + size.width;
             let ey = point.y + size.height;
@@ -241,13 +253,13 @@ impl LayoutBlock {
     }
 
     pub fn offset(&self, dx: Dimension, dy: Dimension) -> LayoutBlock {
-        LayoutBlock {
-            glyphs: self.glyphs
+        LayoutBlock::new(
+            self.glyphs
                 .iter()
                 .map(|(g, p)| (*g, p.dx(dx as i64).dy(dy as i64)))
                 .collect(),
-            baseline: self.baseline + dy,
-        }
+            self.baseline + dy,
+        )
     }
 
     pub fn merge_along_baseline(&self, other: &LayoutBlock) -> LayoutBlock {
@@ -272,18 +284,15 @@ impl LayoutBlock {
             .chain(greater_baselined.glyphs.iter().cloned())
             .collect::<Vec<_>>();
 
-        LayoutBlock {
-            glyphs,
-            baseline: greater_baselined.baseline,
-        }
+        LayoutBlock::new(glyphs, greater_baselined.baseline)
     }
 
     /// Merges the glyphs of two layout blocks along their vertical centre.
     pub fn merge_along_vertical_centre(&self, renderer: &mut impl Renderer, other: &LayoutBlock, baseline: MergeBaseline) -> LayoutBlock {
         // Whose is wider? (i.e., who has the greatest vertical centre)
         // The points can't go negative, so we'll add to the glyphs of the smaller layout block
-        let self_centre = self.area(renderer).width / 2;
-        let other_centre = other.area(renderer).width / 2;
+        let self_centre = self.area.width / 2;
+        let other_centre = other.area.width / 2;
         let (thinner, thinner_centre, wider, wider_centre) = if self_centre < other_centre {
             (self, self_centre, other, other_centre)
         } else {
@@ -302,13 +311,10 @@ impl LayoutBlock {
             .chain(wider.glyphs.iter().cloned())
             .collect::<Vec<_>>();
 
-        LayoutBlock {
-            glyphs,
-            baseline: match baseline {
-                MergeBaseline::SelfAsBaseline => self.baseline,
-                MergeBaseline::OtherAsBaseline => other.baseline,
-            },
-        }
+        LayoutBlock::new(glyphs, match baseline {
+            MergeBaseline::SelfAsBaseline => self.baseline,
+            MergeBaseline::OtherAsBaseline => other.baseline,
+        })
     }
 
     /// Merge the the glyphs of two layout blocks exactly, without moving them.
@@ -322,25 +328,22 @@ impl LayoutBlock {
             .chain(other.glyphs.iter().cloned())
             .collect::<Vec<_>>();
 
-        LayoutBlock {
-            glyphs,
-            baseline: match baseline {
-                MergeBaseline::SelfAsBaseline => self.baseline,
-                MergeBaseline::OtherAsBaseline => other.baseline,
-            },
-        }
+        LayoutBlock::new(glyphs, match baseline {
+            MergeBaseline::SelfAsBaseline => self.baseline,
+            MergeBaseline::OtherAsBaseline => other.baseline,
+        })
     }
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly to the right of another layout block.
     pub fn move_right_of_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
-        self.offset(other.area(renderer).width, 0)
+        self.offset(other.area.width, 0)
     }
 
     /// Assuming that two layout blocks start at the same point, returns a clone of this block moved
     /// directly below another layout block.
     pub fn move_below_other(&self, renderer: &mut impl Renderer, other: &LayoutBlock) -> LayoutBlock {
-        self.offset(0, other.area(renderer).height)
+        self.offset(0, other.area.height)
     }
 
     /// Calculates layout for a sequence of other layouts, one-after-the-other horizontally.
@@ -414,7 +417,7 @@ pub trait Renderer {
         let area = if let Some(v) = viewport {
             v.size
         } else {
-            layout.area(self)
+            layout.area
         };
 
         let viewport_glyphs = layout.for_viewport(self, viewport);

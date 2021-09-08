@@ -488,6 +488,12 @@ impl Layoutable for UnstructuredNodeList {
             layouts.insert(idx, cursor_layout)
         }
 
+        // If the list is still empty (i.e. this list was empty anyway, and the cursor's not in it)
+        // then insert a placeholder
+        if layouts.is_empty() {
+            layouts.push(LayoutBlock::from_glyph(renderer, Glyph::Placeholder))
+        }
+
         LayoutBlock::layout_horizontal(&layouts[..])
 
     }

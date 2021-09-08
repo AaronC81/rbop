@@ -30,6 +30,7 @@ impl Renderer for AsciiRenderer {
                 => Area::new(1, inner_height),
 
             Glyph::Cursor { height } => Area::new(1, height),
+            Glyph::Placeholder => Area::new(1, 1),
         }
     }
 
@@ -137,6 +138,7 @@ impl Renderer for AsciiRenderer {
                     self.put_char('|', point.dy(dy as i64))
                 }
             },
+            Glyph::Placeholder => self.put_char('X', point),
         }
     }
 }

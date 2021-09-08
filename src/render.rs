@@ -163,6 +163,7 @@ pub enum Glyph {
     Sqrt { inner_area: Area },
 
     Cursor { height: Dimension },
+    Placeholder,
 }
 
 impl From<Token> for Glyph {

@@ -15,6 +15,7 @@ pub mod node;
 pub mod nav;
 pub mod render;
 pub mod renderers;
+pub mod numeric;
 
 #[cfg(test)]
 pub mod tests;

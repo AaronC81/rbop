@@ -1,8 +1,9 @@
 use core::str::FromStr;
 
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
+use crate::numeric::Fraction;
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
-use crate::{UnstructuredItem, UnstructuredNodeList};
+use crate::{UnstructuredItem, UnstructuredNodeList, numeric};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
@@ -739,6 +740,36 @@ fn test_serialize() {
     assert_eq!(
         reserialize!(e),
         e
+    );
+}
+
+#[test]
+fn test_decimal_to_fraction() {
+    let accuracy = dec!(0.00000000000001);
+
+    assert_eq!(
+        numeric::decimal_to_fraction(dec!(0.5), accuracy),
+        Fraction::new(dec!(1), dec!(2)),
+    );
+
+    assert_eq!(
+        numeric::decimal_to_fraction(dec!(0.3333333333333333333333), accuracy),
+        Fraction::new(dec!(1), dec!(3)),
+    );
+
+    assert_eq!(
+        numeric::decimal_to_fraction(dec!(24) / dec!(7), accuracy),
+        Fraction::new(dec!(24), dec!(7)),
+    );
+
+    assert_eq!(
+        numeric::decimal_to_fraction(dec!(54321) / dec!(123456789), accuracy),
+        Fraction::new(dec!(18107), dec!(41152263)),
+    );
+
+    assert_eq!(
+        numeric::decimal_to_fraction(dec!(10).powi(20) / dec!(10).powi(5), accuracy),
+        Fraction::new(dec!(10).powi(15), dec!(1)),
     );
 }
 

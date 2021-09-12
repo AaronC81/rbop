@@ -142,14 +142,18 @@ mod ascii_calc {
             // not express any precedence information, so first we need to *upgrade* it to a
             // structured node tree. If the input tree contains parse errors, this will return None.
             match root.upgrade() {
-                Ok(upgraded)
+                Ok(upgraded) => {
                     // If the upgrade succeeded, we now have a valid structured node tree. We can
                     // try to evaluate this now, which might fail if there are maths errors or
                     // similar.
-                    => match upgraded.evaluate() {
+                    match upgraded.evaluate() {
                         Ok(result) => write!(stdout, "{}", result)?,
                         Err(err) => write!(stdout, "Evaluation error: {}", err)?,
-                    },
+                    }
+                    
+                    // Also print the node tree
+                    write!(stdout, "\r\n\r\n{:?}", upgraded)?;
+                },
                 Err(err) => write!(stdout, "Parse error: {}", err)?,
             };
     

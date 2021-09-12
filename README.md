@@ -12,10 +12,15 @@ glyphs. rbop will use these to calculate a two-dimensional layout and draw to yo
 ## Try it out
 
 rbop comes with a simple ASCII renderer, which is used in an example named `ascii_calc`. If you
-`cargo build --examples`, you'll be able to run this example and get a feel for how natural rbop's 
-editor feels!
+`cargo build --examples --features examples`, you'll be able to run this example and get a feel for
+how natural rbop's editor feels!
 
-## Implementing a renderer
+## Documentation
+
+There isn't too much proper documentation yet. The two examples `ascii_calc` and `window_calc` are
+heavily commented, and designed to be read (in that order) to see rbop's usage in action.
+
+### Implementing a renderer
 
 Refer to `AsciiRenderer` for a pretty good example of this. You'll need to implement the `Renderer`
 trait, which will allow rbop to:
@@ -27,7 +32,7 @@ trait, which will allow rbop to:
 
 Do not override the default implementations of any other methods in `Renderer`.
 
-## Node trees
+### Node trees
 
 There are two available node types.
 

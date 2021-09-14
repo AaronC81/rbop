@@ -1,17 +1,21 @@
 use core::alloc::Layout;
-use core::cmp::max;
+use core::cmp::{Ordering, max};
+use core::mem::{self, Discriminant};
 use core::ops::Deref;
+use core::str::FromStr;
 
 use alloc::boxed::Box;
 use alloc::string::ToString;
-use alloc::vec::Vec;
-use num_traits::Zero;
+use alloc::{vec, vec::Vec};
+use num_traits::{One, Zero};
 use rust_decimal::{Decimal};
 
 use crate::error::{Error, MathsError};
 use crate::node::common;
 use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer};
 use crate::nav::NavPathNavigator;
+
+use super::simplified::{Simplifiable, SimplifiedNode};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum StructuredNode {
@@ -138,8 +142,8 @@ impl StructuredNode {
         }
     }    
 
-    /// Returns a clone of this node tree where all usages of a variable are
-    /// replaced with another set of nodes.
+    /// Returns a clone of this node tree where all usages of a variable are replaced with another
+    /// set of nodes.
     pub fn substitute_variable(&self, var_name: char, subst: &StructuredNode) -> StructuredNode {
         let mut clone = self.clone();
         clone.walk_mut(&mut |n| {
@@ -212,6 +216,40 @@ impl Layoutable for StructuredNode {
                 => common::layout_sqrt(inner.deref(), renderer, path),
             StructuredNode::Parentheses(inner)
                 => common::layout_parentheses(inner.deref(), renderer, path),
+        }
+    }
+}
+
+impl Simplifiable for StructuredNode {
+    fn simplify(&self) -> SimplifiedNode {
+        match self {
+            &Self::Number(n) => SimplifiedNode::Number(n),
+            &Self::Variable(n) => SimplifiedNode::Variable(n),
+
+            &Self::Add(ref l, ref r) => SimplifiedNode::Add(vec![
+                l.simplify(), 
+                r.simplify(),
+            ]),
+            &Self::Subtract(ref l, ref r) => SimplifiedNode::Add(vec![
+                l.simplify(), 
+                r.simplify().negate(),
+            ]),
+
+            &Self::Multiply(ref l, ref r) => SimplifiedNode::Multiply(vec![
+                l.simplify(), 
+                r.simplify(),
+            ]),
+            &Self::Divide(ref l, ref r) => SimplifiedNode::Multiply(vec![
+                l.simplify(),
+                r.simplify().reciprocal(),
+            ]),
+
+            Self::Sqrt(n) => SimplifiedNode::Power(
+                box n.simplify(),
+                box SimplifiedNode::Number(Decimal::from_str("0.5").unwrap()),
+            ),
+
+            Self::Parentheses(n) => n.simplify(),
         }
     }
 }

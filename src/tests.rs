@@ -1,5 +1,6 @@
 use core::str::FromStr;
 
+use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::numeric::Fraction;
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
@@ -771,6 +772,79 @@ fn test_decimal_to_fraction() {
         numeric::decimal_to_fraction(dec!(10).powi(20) / dec!(10).powi(5), accuracy),
         Fraction::new(dec!(10).powi(15), dec!(1)),
     );
+}
+
+#[test]
+fn test_simplify_structured() {
+    assert_eq!(
+        *tokens!(1 2 + 5 6 + 3 4).upgrade().unwrap().simplify().flatten().sort(),
+        SimplifiedNode::Add(vec![
+            SimplifiedNode::Number(dec!(12)),
+            SimplifiedNode::Number(dec!(34)),
+            SimplifiedNode::Number(dec!(56)),
+        ])
+    );
+
+    assert_eq!(
+        *tokens!(1 2 + 5 6 * 2 + 3 4).upgrade().unwrap().simplify().flatten().sort(),
+        SimplifiedNode::Add(vec![
+            SimplifiedNode::Number(dec!(12)),
+            SimplifiedNode::Number(dec!(34)),
+            SimplifiedNode::Multiply(vec![
+                SimplifiedNode::Number(dec!(2)),
+                SimplifiedNode::Number(dec!(56)),
+            ]),
+        ])
+    );
+
+    // 1 + ( 2 + ( 3 * ( 4 * 5 ) * 6 ) + ( 7 + 8 ) ) * 9
+    // simplifies, flattens and sorts to 1 + (2 + 7 + 8 + (3 * 4 * 5 * 6)) * 9
+    assert_eq!(
+        *uns_list!(
+            token!(1),
+            token!(+),
+            UnstructuredNode::Parentheses(uns_list!(
+                token!(2),
+                token!(+),
+                UnstructuredNode::Parentheses(uns_list!(
+                    token!(3),
+                    token!(*),
+                    UnstructuredNode::Parentheses(uns_list!(
+                        token!(4),
+                        token!(*),
+                        token!(5),
+                    )),
+                    token!(*),
+                    token!(6),
+                )),
+                token!(+),
+                UnstructuredNode::Parentheses(uns_list!(
+                    token!(7),
+                    token!(+),
+                    token!(8),
+                )),
+            )),
+            token!(*),
+            token!(9),
+        ).upgrade().unwrap().simplify().flatten().sort(),
+        SimplifiedNode::Add(vec![
+            SimplifiedNode::Number(dec!(1)),
+            SimplifiedNode::Multiply(vec![
+                SimplifiedNode::Number(dec!(9)),
+                SimplifiedNode::Add(vec![
+                    SimplifiedNode::Number(dec!(2)),
+                    SimplifiedNode::Number(dec!(7)),
+                    SimplifiedNode::Number(dec!(8)),
+                    SimplifiedNode::Multiply(vec![
+                        SimplifiedNode::Number(dec!(3)),
+                        SimplifiedNode::Number(dec!(4)),
+                        SimplifiedNode::Number(dec!(5)),
+                        SimplifiedNode::Number(dec!(6)),
+                    ]),
+                ]),
+            ]),
+        ])
+    )
 }
 
 #[bench]

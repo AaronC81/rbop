@@ -2,6 +2,7 @@
 #![feature(box_patterns)]
 #![feature(or_patterns)]
 #![feature(test)]
+#![feature(core_intrinsics)]
 
 #![no_std]
 extern crate core;

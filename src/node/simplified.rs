@@ -136,18 +136,10 @@ impl Ord for SimplifiedNode {
                 => l.cmp(r),
             
             // Compare powers by first comparing base, then exponent
-            // (Because of our processing step, this will compare leaves too)
             (&Self::Power(ref lb, ref le), &Self::Power(ref rb, ref re))
                 => lb.cmp(rb).then(le.cmp(re)),
 
             // === Different types =================================================================
-
-            // Compare the base of powers with any other node - if they're equal, put the power
-            // after
-            (&Self::Power(ref l, _), r)
-                => l.as_ref().cmp(r).then(Ordering::Greater),
-            (l, &Self::Power(ref r, _))
-                => l.cmp(r.as_ref()).then(Ordering::Less),
 
             // Failing all else, use enum definition order
             // (This is what the derivation for *Ord does)

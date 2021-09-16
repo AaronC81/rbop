@@ -182,6 +182,9 @@ impl<'a> Parser<'a> {
         } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
             self.advance();
             StructuredNode::Parentheses(box inner.upgrade()?)
+        } else if let Some(UnstructuredNode::Power(b, e)) = self.current() {
+            self.advance();
+            StructuredNode::Power(box b.upgrade()?, box e.upgrade()?)
         } else if let Some(Token::Variable(v)) = self.current_token() {
             self.advance();
             StructuredNode::Variable(v)

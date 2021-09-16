@@ -59,6 +59,26 @@ macro_rules! reserialize {
     };
 }
 
+macro_rules! reduce {
+    ($n:expr) => {
+        {
+            let mut nodes = $n;
+            assert!(matches!(nodes.reduce(), Ok(_)));
+            nodes
+        }
+    };
+}
+
+macro_rules! simplify {
+    ($t:expr) => {
+        {
+            let mut n = $t.upgrade().unwrap().simplify().flatten();
+            n.sort();
+            n
+        }
+    };
+}
+
 /// ```text
 ///       56    
 ///    34+--
@@ -777,7 +797,7 @@ fn test_decimal_to_fraction() {
 #[test]
 fn test_simplify_structured() {
     assert_eq!(
-        *tokens!(1 2 + 5 6 + 3 4).upgrade().unwrap().simplify().flatten().sort(),
+        simplify!(tokens!(1 2 + 5 6 + 3 4)),
         SimplifiedNode::Add(vec![
             SimplifiedNode::Number(dec!(12)),
             SimplifiedNode::Number(dec!(34)),
@@ -786,7 +806,7 @@ fn test_simplify_structured() {
     );
 
     assert_eq!(
-        *tokens!(1 2 + 5 6 * 2 + 3 4).upgrade().unwrap().simplify().flatten().sort(),
+        simplify!(tokens!(1 2 + 5 6 * 2 + 3 4)),
         SimplifiedNode::Add(vec![
             SimplifiedNode::Number(dec!(12)),
             SimplifiedNode::Number(dec!(34)),
@@ -800,7 +820,7 @@ fn test_simplify_structured() {
     // 1 + ( 2 + ( 3 * ( 4 * 5 ) * 6 ) + ( 7 + 8 ) ) * 9
     // simplifies, flattens and sorts to 1 + (2 + 7 + 8 + (3 * 4 * 5 * 6)) * 9
     assert_eq!(
-        *uns_list!(
+        simplify!(uns_list!(
             token!(1),
             token!(+),
             UnstructuredNode::Parentheses(uns_list!(
@@ -826,7 +846,7 @@ fn test_simplify_structured() {
             )),
             token!(*),
             token!(9),
-        ).upgrade().unwrap().simplify().flatten().sort(),
+        )),
         SimplifiedNode::Add(vec![
             SimplifiedNode::Number(dec!(1)),
             SimplifiedNode::Multiply(vec![
@@ -844,6 +864,61 @@ fn test_simplify_structured() {
                 ]),
             ]),
         ])
+    );
+
+    assert_eq!(
+        simplify!(tokens!(1 - 5)),
+        SimplifiedNode::Add(vec![
+            SimplifiedNode::Number(dec!(1)),
+            SimplifiedNode::Multiply(vec![
+                SimplifiedNode::Number(dec!(-1)),
+                SimplifiedNode::Number(dec!(5)),
+            ])
+        ])
+    );
+}
+
+#[test]
+fn test_reduction() {
+    assert_eq!(
+        reduce!(simplify!(tokens!(1 2 + 5 6 + 3 4))),
+        SimplifiedNode::Number(dec!(102))
+    );
+
+    assert_eq!(
+        reduce!(simplify!(tokens!(1 2 + 5 6 * 2 + 3 4))),
+        SimplifiedNode::Number(dec!(158))
+    );
+
+    assert_eq!(
+        reduce!(simplify!(uns_list!(
+            token!(1),
+            token!(+),
+            UnstructuredNode::Parentheses(uns_list!(
+                token!(2),
+                token!(+),
+                UnstructuredNode::Parentheses(uns_list!(
+                    token!(3),
+                    token!(*),
+                    UnstructuredNode::Parentheses(uns_list!(
+                        token!(4),
+                        token!(*),
+                        token!(5),
+                    )),
+                    token!(*),
+                    token!(6),
+                )),
+                token!(+),
+                UnstructuredNode::Parentheses(uns_list!(
+                    token!(7),
+                    token!(+),
+                    token!(8),
+                )),
+            )),
+            token!(*),
+            token!(9),
+        ))),
+        SimplifiedNode::Number(dec!(3394))
     )
 }
 

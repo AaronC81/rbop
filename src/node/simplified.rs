@@ -11,8 +11,10 @@
 use core::{cmp::Ordering, mem::{self, Discriminant}};
 
 use alloc::{boxed::Box, vec, vec::Vec};
-use num_traits::One;
+use num_traits::{One, Zero};
 use rust_decimal::Decimal;
+
+use crate::{error::Error, numeric::DecimalExtensions};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which
@@ -49,6 +51,20 @@ impl SimplifiedNode {
                 e.sort();
             },
             Self::Number(_) | Self::Variable(_) => (),
+        }
+
+        self
+    }
+
+    /// Sorts just this level of the node tree. Child items are not recursed into. This can be an
+    /// optimization if you have inserted new items into an Add or Multiply which you know are
+    /// themselves already sorted, and just wish to re-sort the container.
+    ///
+    /// Returns &mut self to allow method chaining.
+    pub fn sort_one_level(&mut self) -> &mut Self {
+        match self {
+            SimplifiedNode::Add(n) | SimplifiedNode::Multiply(n) => n.sort(),
+            SimplifiedNode::Power(_, _) | Self::Number(_) | Self::Variable(_) => (),
         }
 
         self
@@ -101,10 +117,158 @@ impl SimplifiedNode {
         result
     }
 
+    /// Performs a mathematical reduction on this node tree. The resulting tree has the same
+    /// semantic meaning as the original tree, aiming for no loss in precision whatsoever, within
+    /// the margins of what `Decimal` can represent.
+    ///
+    /// This node tree MUST be sorted with `sort` first.
+    ///
+    /// Returns a `ReductionResult` encapsulating:
+    ///   - Whether any reduction took place
+    ///   - If an error occured during reduction
+    pub fn reduce(&mut self) -> ReductionResult {
+        use ReductionStatus::*;
+
+        let mut status = NoReduction;
+        /*
+        Reduction:
+        - Run a pass
+        - If it finds something, replace reduced nodes, and run another induction pass on the node which
+            contained the reduced ones
+        - Repeat until pass makes no changes
+        */
+
+        match self {
+            // There's no reduction which can be done on leaf nodes
+            Self::Variable(_) => (),
+            Self::Number(_) => (),
+
+            Self::Power(b, e) => {
+                // Reduce the base and exponent first
+                b.reduce()?;
+                e.reduce()?;
+
+                // If the base is a number, and the power is a whole number (i.e. not a root), we
+                // can perform that power and reduce to the result with no loss in accuracy
+                if let Self::Number(bn) = b.as_ref() {
+                    if let Self::Number(en) = e.as_ref() {
+                        if en.is_whole() {
+                            *self = Self::Number(bn.powd(*en));
+                            status = PerformedReduction;
+                        }
+                    }
+                }
+            }
+
+            SimplifiedNode::Multiply(v) => {
+                // Reduce children
+                Self::reduce_vec(v)?;
+
+                // Are there numbers at the start?
+                if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
+                    // Are any of numbers 0? If so, this ENTIRE multiplication node evaluates to 0
+                    if numbers.iter().any(|n| n.is_zero()) {
+                        *self = Self::Number(Decimal::zero());
+                        return Ok(PerformedReduction)
+                    }
+
+                    // Multiply all of these together
+                    let result = numbers.iter().fold(Decimal::one(), |a, b| a * **b);
+
+                    // Delete the multiplied nodes and insert this onto the beginning
+                    v.drain(0..v.len());
+                    v.insert(0, Self::Number(result));
+
+                    status = PerformedReduction
+
+                }
+
+                // If there is only one child, reduce to that child
+                if v.len() == 1 {
+                    *self = v[0].clone();
+                }
+            }
+
+            SimplifiedNode::Add(v) => {
+                // Reduce children
+                Self::reduce_vec(v)?;
+
+                // Are there numbers at the start?
+                if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
+                    // Add all of these together
+                    let result = numbers.iter().fold(Decimal::zero(), |a, b| a + **b);
+
+                    // Delete the added nodes and insert this onto the beginning
+                    v.drain(0..v.len());
+                    v.insert(0, Self::Number(result));
+
+                    status = PerformedReduction
+
+                }
+
+                // If there is only one child, reduce to that child
+                if v.len() == 1 {
+                    *self = v[0].clone();
+                }
+            }
+        }
+
+        Ok(status)
+    }
+
+    /// Reduces a vec of nodes, and re-sorts the vec if any of the reductions changed a child node.
+    fn reduce_vec(vec: &mut Vec<SimplifiedNode>) -> ReductionResult {
+        // Reduce all child items, collecting whether any were actually reduced
+        let mut any_children_reduced = false;
+        for child in vec.iter_mut() {
+            if child.reduce()? == ReductionStatus::PerformedReduction {
+                any_children_reduced = true;
+            }
+        }
+
+        // If any child was reduced, re-sort
+        if any_children_reduced {
+            vec.sort();
+        }
+
+        Ok(if any_children_reduced {
+            ReductionStatus::PerformedReduction
+        } else { 
+            ReductionStatus::NoReduction
+        })
+    }
+    
+    /// Collects numbers from the beginning of a series of nodes. If there are no numbers at the 
+    /// start, returns None.
+    fn collect_numbers_from_start(vec: &[SimplifiedNode]) -> Option<Vec<&Decimal>> {
+        // Are there numbers at the start?
+        if let Some(Self::Number(first_n)) = vec.get(0) {
+            // Yep! Collect all of the numbers
+            let mut numbers = vec![first_n];
+            let mut i = 1;
+            while let Some(Self::Number(n)) = vec.get(i) {
+                numbers.push(n);
+                i += 1;
+            }
+
+            Some(numbers)
+        } else {
+            None
+        }
+    }
+
     fn is_leaf(&self) -> bool {
         matches!(self, Self::Number(_) | Self::Variable(_))
     }
 }
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum ReductionStatus {
+    PerformedReduction,
+    NoReduction,
+}
+
+pub type ReductionResult = Result<ReductionStatus, Box<dyn Error>>;
 
 pub trait Simplifiable {
     /// Converts this node into a `SimplifiedNode` tree.

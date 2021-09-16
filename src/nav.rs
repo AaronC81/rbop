@@ -41,6 +41,11 @@ impl NavPath {
     pub fn offset(&mut self, n: isize) {
         *self.path.last_mut().unwrap() = (*self.path.last().unwrap() as isize + n) as usize;
     }
+
+    // Gets the length of this path.
+    pub fn len(&self) -> usize {
+        self.path.len()
+    }
 }
 
 impl core::ops::Index<usize> for NavPath {

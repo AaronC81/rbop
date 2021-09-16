@@ -164,7 +164,24 @@ impl UnstructuredNodeRoot {
 
         // Are we at the end of this node?
         if index == children.len() {
-            // Is there another node above this one?
+            // Special case: are we currently in the base slot of a power node?
+            let node_list = self.nav_nodes_outwards(path);
+
+            // First node would be the power
+            if let Some((_, _, UnstructuredNode::Power(b, _))) = node_list.first() {
+                // Index -1 in nav list will be for this unstructured node list, so index -2
+                // will be index into power (0 = base, 1 = exp)
+                if path[path.len() - 2] == 0 {
+                    // Yes, we're in the base slot of a power node - move to the start of the
+                    // exponent slot
+                    path.pop(2);
+                    path.push(1);
+                    path.push(0);
+                    return;
+                }
+            }
+
+            // OK, we're past the special cases. Is there another node above this one?
             if !path.root() {
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
@@ -185,8 +202,6 @@ impl UnstructuredNodeRoot {
                     // unstructured
                     path.push(0);
                     path.push(0);
-
-                    // TODO: for powers, what if we're in the base slot already?
                 },
 
                 // Token, we can just move past it
@@ -205,7 +220,24 @@ impl UnstructuredNodeRoot {
 
         // Are we at the start of this node?
         if index == 0 {
-            // Is there another node above this one?
+            // Special case: are we currently in the exponent slot of a power node?
+            let node_list = self.nav_nodes_outwards(path);
+
+            // First node would be the power
+            if let Some((_, _, UnstructuredNode::Power(b, _))) = node_list.first() {
+                // Index -1 in nav list will be for this unstructured node list, so index -2
+                // will be index into power (0 = base, 1 = exp)
+                if path[path.len() - 2] == 1 {
+                    // Yes, we're in the exponent slot of a power node - move to the end of the
+                    // base slot
+                    path.pop(2);
+                    path.push(0);
+                    path.push(b.items.len());
+                    return;
+                }
+            }
+
+            // OK, we're past the special cases. Is there another node above this one?
             if !path.root() {
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
@@ -233,8 +265,6 @@ impl UnstructuredNodeRoot {
                     // unstructured
                     path.push(1);
                     path.push(e.items.len());
-
-                    // TODO: what if we're in the exponent slot already?
                 }
 
                 // Anything else, nothing special needed

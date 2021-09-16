@@ -792,6 +792,62 @@ fn test_power() {
         )).upgrade().unwrap().evaluate().unwrap(),
         dec!(9),
     );
+
+    // Movement within powers
+    let mut node = UnstructuredNodeRoot { root: uns_list!(
+        UnstructuredNode::Power(
+            tokens!(1 2),
+            tokens!(3 4),
+        )
+    ) };
+    let mut nav_path = NavPath::new(vec![1]);
+    let mut renderer = AsciiRenderer::default();
+
+    assert_eq!(
+        render!(node, Some(&mut nav_path.to_navigator())),
+        vec![
+            "  34|",
+            "12  |",
+        ],
+    );
+
+    // Move into the power's exponent and through it to the start
+    node.move_left(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 1, 2]));
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 1, 0]));
+
+    // One more left movement should drop us down into the end of the power's base, move through
+    // that too
+    node.move_left(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 0, 2]));
+    node.move_left(&mut nav_path, &mut renderer, None);
+    node.move_left(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 0, 0]));
+
+    // Move left again and we should emerge before the power
+    node.move_left(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0]));
+
+    // Great - now let's move back through, moving right! First moves should take us into and
+    // through the base
+    node.move_right(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 0, 0]));
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 0, 2]));
+
+    // Next move should take us into the exponent, and then through that
+    node.move_right(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 1, 0]));
+    node.move_right(&mut nav_path, &mut renderer, None);
+    node.move_right(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![0, 1, 2]));
+
+    // Final move should exit the power
+    node.move_right(&mut nav_path, &mut renderer, None);
+    assert_eq!(nav_path, NavPath::new(vec![1]));
 }
 
 #[test]

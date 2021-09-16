@@ -12,6 +12,7 @@ use rust_decimal::{Decimal};
 
 use crate::error::{Error, MathsError};
 use crate::node::common;
+use crate::numeric::DecimalExtensions;
 use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer};
 use crate::nav::NavPathNavigator;
 
@@ -22,6 +23,7 @@ pub enum StructuredNode {
     Number(Decimal),
     Variable(char),
     Sqrt(Box<StructuredNode>),
+    Power(Box<StructuredNode>, Box<StructuredNode>),
     Add(Box<StructuredNode>, Box<StructuredNode>),
     Subtract(Box<StructuredNode>, Box<StructuredNode>),
     Multiply(Box<StructuredNode>, Box<StructuredNode>),
@@ -84,7 +86,7 @@ impl StructuredNode {
                 StructuredNode::Subtract(l.clone(), box r)
             }
 
-            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_)
+            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_) | StructuredNode::Power(_, _)
                 => self.clone(),
         })
     }
@@ -96,6 +98,8 @@ impl StructuredNode {
             StructuredNode::Variable(c) => Err(box MathsError("cannot evaluate variable".into())),
             StructuredNode::Sqrt(inner) =>
                 inner.evaluate()?.sqrt().ok_or(box MathsError("illegal sqrt".into())),
+            StructuredNode::Power(b, e) =>
+                Ok(b.evaluate()?.powd(e.evaluate()?)),
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
             StructuredNode::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
             StructuredNode::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
@@ -118,6 +122,10 @@ impl StructuredNode {
             StructuredNode::Sqrt(inner) | StructuredNode::Parentheses(inner) => {
                 inner.walk(func);
             },
+            StructuredNode::Power(b, e) => {
+                b.walk(func);
+                e.walk(func);
+            }
 
             StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
         }
@@ -137,6 +145,10 @@ impl StructuredNode {
             StructuredNode::Sqrt(inner) | StructuredNode::Parentheses(inner) => {
                 inner.walk_mut(func);
             },
+            StructuredNode::Power(b, e) => {
+                b.walk_mut(func);
+                e.walk_mut(func);
+            }
 
             StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
         }
@@ -216,6 +228,8 @@ impl Layoutable for StructuredNode {
                 => common::layout_sqrt(inner.deref(), renderer, path),
             StructuredNode::Parentheses(inner)
                 => common::layout_parentheses(inner.deref(), renderer, path),
+            StructuredNode::Power(base, exp)
+                => common::layout_power(base.deref(), exp.deref(), renderer, path),
         }
     }
 }
@@ -247,6 +261,10 @@ impl Simplifiable for StructuredNode {
             Self::Sqrt(n) => SimplifiedNode::Power(
                 box n.simplify(),
                 box SimplifiedNode::Number(Decimal::from_str("0.5").unwrap()),
+            ),
+            Self::Power(b, e) => SimplifiedNode::Power(
+                box b.simplify(),
+                box e.simplify(),
             ),
 
             Self::Parentheses(n) => n.simplify(),

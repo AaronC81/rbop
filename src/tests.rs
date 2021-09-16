@@ -336,6 +336,47 @@ fn test_ascii_render() {
             "     90     "
         ],
     );
+
+    let tree = StructuredNode::Power(
+        box StructuredNode::Number(dec!(12)),
+        box StructuredNode::Number(dec!(3)),
+    ).disambiguate().unwrap();
+    assert_eq!(
+        render!(tree),
+        vec![
+            "  3",
+            "12 ",
+        ],
+    );
+
+    let tree = StructuredNode::Add(
+        box StructuredNode::Add(
+            box StructuredNode::Add(
+                box StructuredNode::Power(
+                    box StructuredNode::Number(dec!(12)),
+                    box StructuredNode::Number(dec!(3)),
+                ),
+                box StructuredNode::Power(
+                    box StructuredNode::Number(dec!(45)),
+                    box StructuredNode::Divide(
+                        box StructuredNode::Number(dec!(67)),
+                        box StructuredNode::Number(dec!(8)),
+                    ),
+                ),
+            ),
+            box StructuredNode::Number(dec!(9)),
+        ),
+        box StructuredNode::Number(1.into()),
+    ).disambiguate().unwrap();
+    assert_eq!(
+        render!(tree),
+        vec![
+            "      67    ",
+            "      --    ",
+            "  3    8    ",
+            "12 +45  +9+1",
+        ],
+    );
 }
 
 #[test]

@@ -31,6 +31,7 @@ pub enum UnstructuredNode {
     Sqrt(UnstructuredNodeList),
     Fraction(UnstructuredNodeList, UnstructuredNodeList),
     Parentheses(UnstructuredNodeList),
+    Power(UnstructuredNodeList, UnstructuredNodeList),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -98,6 +99,15 @@ impl Navigable for UnstructuredNode {
                     panic!("index out of range for divide navigation")
                 }
             },
+            UnstructuredNode::Power(base, exp) => {
+                if next_index == 0 {
+                    base.navigate_trace(step_path, trace)
+                } else if next_index == 1 {
+                    exp.navigate_trace(step_path, trace)
+                } else {
+                    panic!("index out of range for power navigation")
+                }
+            }
             UnstructuredNode::Token(_) => panic!("cannot navigate into token"),
         }
     }
@@ -170,11 +180,13 @@ impl UnstructuredNodeRoot {
 
             match right_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) => {
+                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_, _) => {
                     // Navigate into its first/only slot, and start at the first item of the
                     // unstructured
                     path.push(0);
                     path.push(0);
+
+                    // TODO: for powers, what if we're in the base slot already?
                 },
 
                 // Token, we can just move past it
@@ -210,11 +222,20 @@ impl UnstructuredNodeRoot {
             match left_child {
                 // Structured nodes
                 UnstructuredNode::Sqrt(n) | UnstructuredNode::Fraction(n, _) | UnstructuredNode::Parentheses(n) => {
-                    // Navigate into its first/only slot, and start at the first item of the
+                    // Navigate into its first/only slot, and start at the last item of the
                     // unstructured
                     path.push(0);
                     path.push(n.items.len());
                 },
+
+                UnstructuredNode::Power(_, e) => {
+                    // Move into the exponent slot (index 1), and start at the list item of the
+                    // unstructured
+                    path.push(1);
+                    path.push(e.items.len());
+
+                    // TODO: what if we're in the exponent slot already?
+                }
 
                 // Anything else, nothing special needed
                 UnstructuredNode::Token(_) => (),
@@ -315,7 +336,7 @@ impl UnstructuredNodeRoot {
         current_node.items.insert(index, new_node.clone());
 
         match new_node {
-            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) => {
+            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_, _) => {
                 // Move into the new node
                 path.push(0);
                 path.push(0);
@@ -382,6 +403,9 @@ impl Upgradable for UnstructuredNode {
             UnstructuredNode::Fraction(a, b)
                 => Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)),
 
+            UnstructuredNode::Power(b, e)
+                => Ok(StructuredNode::Power(box b.upgrade()?, box e.upgrade()?)),
+
             UnstructuredNode::Token(_) => Err(box NodeError("token cannot be upgraded".into())),
         }
     }
@@ -405,6 +429,8 @@ impl Layoutable for UnstructuredNode {
                 => common::layout_fraction(top, bottom, renderer, path),
             UnstructuredNode::Parentheses(inner)
                 => common::layout_parentheses(inner, renderer, path),
+            UnstructuredNode::Power(base, exp)
+                => common::layout_power(base, exp, renderer, path),
         }
     }
 }
@@ -588,6 +614,12 @@ impl Serializable for UnstructuredNode {
                 n.append(&mut i.serialize());
                 n
             },
+            UnstructuredNode::Power(b, e) => {
+                let mut n = vec![4];
+                n.append(&mut b.serialize());
+                n.append(&mut e.serialize());
+                n
+            }
         }
     }
 
@@ -606,6 +638,10 @@ impl Serializable for UnstructuredNode {
                 UnstructuredNodeList::deserialize(bytes)?,
             )),
             3 => Some(UnstructuredNode::Parentheses(UnstructuredNodeList::deserialize(bytes)?)),
+            4 => Some(UnstructuredNode::Power(
+                UnstructuredNodeList::deserialize(bytes)?,
+                UnstructuredNodeList::deserialize(bytes)?,
+            )),
 
             _ => None,
         }

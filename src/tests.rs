@@ -919,7 +919,12 @@ fn test_reduction() {
             token!(9),
         ))),
         SimplifiedNode::Number(dec!(3394))
-    )
+    );
+
+    assert_eq!(
+        reduce!(simplify!(tokens!(8 / 2))),
+        SimplifiedNode::Number(dec!(4))
+    );
 }
 
 #[bench]

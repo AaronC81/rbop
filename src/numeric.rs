@@ -90,10 +90,13 @@ pub fn decimal_to_fraction(mut value: Decimal, accuracy: Decimal) -> Fraction {
 /// Currently, these are:
 ///   - `to_parts`, to enable access to the raw structure members of the decimal value.
 ///   - a backport of `powd` from later versions of rust_decimal.
+///   - a backport of `powi` from later versions of rust_decimal. This version already has a
+///     function called `powi` (which was renamed to `powu`), so here it's called `pows`.
 ///   - `is_whole`, which checks if a decimal is equal to its floor (i.e. if it's a whole number).
 pub trait DecimalExtensions {
     fn to_parts(&self) -> (u32, u32, u32, u32);
     fn powd(&self, exp: Decimal) -> Decimal;
+    fn pows(&self, exp: i64) -> Decimal;
     fn is_whole(&self) -> bool;
 }
 
@@ -136,8 +139,7 @@ impl DecimalExtensions for Decimal {
             }
 
             if exp.is_sign_negative() {
-                // TODO: this needs more to be backported, I don't want to do that now
-                panic!("negative powers not supported")
+                return self.pows(-(exp_lo as i64));
             } else {
                 return self.powi(exp_lo as u64);
             }
@@ -154,6 +156,19 @@ impl DecimalExtensions for Decimal {
         let mut result = e.exp();
         result.set_sign_negative(negative);
         result
+    }
+
+    fn pows(&self, exp: i64) -> Decimal {
+        // For negative exponents we change x^-y into 1 / x^y.
+        // Otherwise, we calculate a standard unsigned exponent
+        if exp >= 0 {
+            return self.powi(exp as u64);
+        }
+
+        // Get the unsigned exponent
+        let exp = exp.unsigned_abs();
+        let pow = self.powi(exp);
+        Decimal::one() / pow
     }
 
     /// Returns true if this decimal is a whole number.

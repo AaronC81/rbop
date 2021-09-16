@@ -256,46 +256,25 @@ impl UnstructuredNodeRoot {
         // move to the bottom of the fraction.
         // That's why we need to check up the entire nav path, looking for fractions.
 
-        // Use navigate_trace to build a tree of navigation path items
-        // We can clone them, since we aren't modifying them - just checking what they are
-        let mut nav_items = vec![];
-        self.root.navigate_trace(
-            &mut path.to_navigator(), 
-            |item| {
-                // I fought the borrow checker and lost :(
-                // We only care about nodes, so this makes our life easier
-                // We still want nav_items to be the right length
-                if let UnstructuredItem::Node(node) = item {
-                    nav_items.push(Some(node.clone()));
-                } else {
-                    nav_items.push(None);
-                }
-            }
-        );
-
         let mut moved_within = false;
 
         // Iterate reversed, since we're looking from the inside out
-        for (i, item) in nav_items.iter().rev().enumerate() {
+        for (i, item) in self.nav_nodes_outwards(path) {
             // Division is currently the only thing with vertical movement
-            if let Some(UnstructuredNode::Fraction(top, bottom)) = item {
-                // Work out the true index of this in the nav tree.
-                // Remember, we're going backwards!
-                let true_index = (nav_items.len() - i) - 1;
-
+            if let UnstructuredNode::Fraction(ref top, ref bottom) = item {
                 let (index_allowing_movement, index_to_move_to) = match direction {
                     MoveVerticalDirection::Up => (1, 0),
                     MoveVerticalDirection::Down => (0, 1),
                 };
 
                 // Are we on the top?
-                if path[true_index] == index_allowing_movement {
+                if path[i] == index_allowing_movement {
                     // Yes!
                     // Determine the index to move to
                     let match_points = nav::match_vertical_cursor_points(
                         renderer, top, bottom, direction
                     );
-                    let new_index = match_points[path[true_index + 1]];
+                    let new_index = match_points[path[i + 1]];
 
                     // Pop up to and including this item, then move to the bottom and the correct
                     // new index
@@ -368,6 +347,64 @@ impl UnstructuredNodeRoot {
         }
 
         self.ensure_cursor_visible(path, renderer, viewport.as_mut().map(|x| x as _));
+    }
+
+
+    /// Builds a list of the items at each element of the nav path.
+    ///
+    /// Each index in the returned vec has a direct mapping to each index in the nav path. If the
+    /// item in the returned vec is None, the nav path item is not a node. If it is Some, the
+    /// wrapped node is the node at that index in the nav path.
+    ///
+    /// The returned nodes are clones, not references, so modifying them will not affect the node
+    /// tree.
+    fn nav_node_list(&mut self, path: &mut NavPath) -> Vec<Option<UnstructuredNode>> {
+        let mut nav_items = vec![];
+        self.root.navigate_trace(
+            &mut path.to_navigator(), 
+            |item| {
+                // I fought the borrow checker and lost :(
+                // We only care about nodes, so this makes our life easier
+                // We still want nav_items to be the right length
+                if let UnstructuredItem::Node(node) = item {
+                    nav_items.push(Some(node.clone()));
+                } else {
+                    nav_items.push(None);
+                }
+            }
+        );
+        nav_items
+    }
+
+    /// Builds a list of the nodes at each element of the nav path, working outwards from the node
+    /// which contains the cursor.
+    ///
+    /// The returned vec items are of the form (nav list index, node). Since the list works
+    /// outwards, the nav list indexes are strictly decreasing.
+    ///
+    /// The returned nodes are clones, not references, so modifying them will not affect the node
+    /// tree.
+    fn nav_nodes_outwards(&mut self, path: &mut NavPath) -> Vec<(usize, UnstructuredNode)> {
+        let mut result = vec![];
+
+        // Get items
+        let nav_items = self.nav_node_list(path);
+        let nav_items_len = nav_items.len();
+
+        // Reverse node nav list, so we iterate from the inside out
+        for (i, item) in nav_items.into_iter().rev().enumerate() {
+            // If this node is actually a node...
+            if let Some(node) = item {
+                // Work out the true index of this in the nav tree.
+                // Remember, we're going backwards!
+                let true_index = (nav_items_len - i) - 1;
+
+                // Yield
+                result.push((true_index, node));
+            }
+        }
+
+        result
     }
 }
 

@@ -259,7 +259,7 @@ impl UnstructuredNodeRoot {
         let mut moved_within = false;
 
         // Iterate reversed, since we're looking from the inside out
-        for (i, item) in self.nav_nodes_outwards(path) {
+        for (i, ri, item) in self.nav_nodes_outwards(path) {
             // Division is currently the only thing with vertical movement
             if let UnstructuredNode::Fraction(ref top, ref bottom) = item {
                 let (index_allowing_movement, index_to_move_to) = match direction {
@@ -278,7 +278,7 @@ impl UnstructuredNodeRoot {
 
                     // Pop up to and including this item, then move to the bottom and the correct
                     // new index
-                    path.pop(i + 1);
+                    path.pop(ri + 1);
                     path.push(index_to_move_to);
                     path.push(new_index);
                     moved_within = true;
@@ -379,12 +379,13 @@ impl UnstructuredNodeRoot {
     /// Builds a list of the nodes at each element of the nav path, working outwards from the node
     /// which contains the cursor.
     ///
-    /// The returned vec items are of the form (nav list index, node). Since the list works
-    /// outwards, the nav list indexes are strictly decreasing.
+    /// The returned vec items are of the form (nav list index, reverse nav list index, node). Since
+    /// the list works outwards, the nav list indexes are strictly decreasing. The reverse indexes
+    /// start from the beginning of the nav list instead and are strictly increasing.
     ///
     /// The returned nodes are clones, not references, so modifying them will not affect the node
     /// tree.
-    fn nav_nodes_outwards(&mut self, path: &mut NavPath) -> Vec<(usize, UnstructuredNode)> {
+    fn nav_nodes_outwards(&mut self, path: &mut NavPath) -> Vec<(usize, usize, UnstructuredNode)> {
         let mut result = vec![];
 
         // Get items
@@ -400,7 +401,7 @@ impl UnstructuredNodeRoot {
                 let true_index = (nav_items_len - i) - 1;
 
                 // Yield
-                result.push((true_index, node));
+                result.push((true_index, i, node));
             }
         }
 

@@ -201,11 +201,52 @@ impl SizedGlyph {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct LayoutBlock {
     pub glyphs: Vec<(SizedGlyph, CalculatedPoint)>,
     pub baseline: Dimension,
     pub area: Area,
+    pub special: LayoutBlockSpecial,
+}
+
+
+/// A set of rarely-used special flags which a layout block may use to control unusual behaviours
+/// while computing a layout.
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
+pub struct LayoutBlockSpecial {
+    /// If true, while merging along the horizontal baseline with `layout_horizontal`, this node
+    /// will be merged with its left peer before any other merges take place.
+    ///
+    /// If multiple layout blocks specify this option to have high precedence, they will be merged
+    /// from lowest index (left) to highest index (right).
+    ///
+    /// This can be used to ensure that blocks which should appear as a superscript appear at the
+    /// correct height. For example, let's render (1/2) + 3^2:
+    ///
+    /// ```text
+    ///    Normal prec.                    High prec.
+    /// 
+    ///     .-------.2 <-----.          .-----. .----. 
+    ///     | 1     |        |          | 1   | |  2 |
+    ///    ~| - + 3 |~       |         ~| - + |~| 3  |~
+    ///     | 2     |        |          | 2   | '----' 
+    ///     '-------'        |          '-----'  ^^^^
+    ///      ^^^^^^^         |                   Merged
+    ///   Left blocks were   |                   first 
+    ///   merged first...    |                    
+    ///     so power is -----'                    
+    ///    wrong height     
+    /// ```               
+    ///
+    pub baseline_merge_with_high_precedence: bool,
+
+    /// If true, while merging along the horizontal baseline with `merge_along_baseline`, this block
+    /// will be placed vertically above the block before it. The horizontal placement will not be
+    /// affected.
+    ///
+    /// It is very likely you also want `baseline_merge_with_high_precedence` to be true when using
+    /// this option.
+    pub superscript: bool,
 }
 
 pub enum MergeBaseline {
@@ -215,7 +256,7 @@ pub enum MergeBaseline {
 
 impl LayoutBlock {
     pub fn empty() -> LayoutBlock {
-        LayoutBlock { glyphs: vec![], baseline: 0, area: Area::new(0, 0) }
+        LayoutBlock { glyphs: vec![], baseline: 0, area: Area::new(0, 0), special: LayoutBlockSpecial::default() }
     }
 
     pub fn new(glyphs: Vec<(SizedGlyph, CalculatedPoint)>, baseline: Dimension) -> Self {
@@ -224,6 +265,14 @@ impl LayoutBlock {
             glyphs,
             baseline,
             area,
+            special: LayoutBlockSpecial::default(),
+        }
+    }
+
+    pub fn update_area(self) -> Self {
+        Self {
+            area: Self::area(&self.glyphs),
+            ..self
         }
     }
 
@@ -235,6 +284,7 @@ impl LayoutBlock {
             glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
             baseline: glyph.area.height / 2,
             area: glyph.area,
+            special: LayoutBlockSpecial::default(),
         }
     }
 
@@ -254,16 +304,35 @@ impl LayoutBlock {
     }
 
     pub fn offset(&self, dx: Dimension, dy: Dimension) -> LayoutBlock {
-        LayoutBlock::new(
-            self.glyphs
+        LayoutBlock {
+            glyphs: self.glyphs
                 .iter()
                 .map(|(g, p)| (*g, p.dx(dx as i64).dy(dy as i64)))
                 .collect(),
-            self.baseline + dy,
-        )
+            baseline: self.baseline + dy,
+            ..*self
+        }.update_area()
     }
 
     pub fn merge_along_baseline(&self, other: &LayoutBlock) -> LayoutBlock {
+        // Is the other block is a superscript? This needs to be handled totally differently...
+        if other.special.superscript {
+            // Currently the superscript special is only used by powers, so I'm just going to call
+            // the normally-aligned part (&self) the base, and the superscript-aligned part (other)
+            // the exponent!
+            
+            // Shift this block, the base, down by its own height
+            // Ideally we'd shift the exponent up, but we can't shift negatively - we can use this
+            // to achieve the same thing though
+            let base = self.offset(0, self.area.height);
+
+            // There's no need to shift the exponent - we expect that it was moved to the right
+            // prior to calling this
+
+            // Merge them both in place! Use the base's baseline
+            return base.merge_in_place(&other, MergeBaseline::SelfAsBaseline);
+        }
+
         // Whose baseline is greater?
         // The points can't go negative, so we'll add to the glyphs of the lesser-baselined layout
         // block
@@ -351,6 +420,26 @@ impl LayoutBlock {
     pub fn layout_horizontal(layouts: &[LayoutBlock]) -> LayoutBlock where Self: Sized
     {
         let mut block = LayoutBlock::empty();
+
+        // Check for layouts which want to be merged with high precedence
+        let mut layouts = layouts.to_vec();
+        for (i, layout) in layouts.clone().into_iter().enumerate() {
+            if layout.special.baseline_merge_with_high_precedence {
+                // Get the layout to this one's left (or do nothing if it's at the start, in which
+                // case .get will be None)
+                if let Some(layout_to_left) = layouts.get(i - 1) {
+                    let layout_to_left = layout_to_left.clone();
+
+                    // Remove both layouts
+                    layouts.drain((i - 1)..=i);
+
+                    // Insert new merged layout
+                    layouts.insert(i - 1, layout_to_left.merge_along_baseline(
+                        &layout.move_right_of_other(&layout_to_left)
+                    ))
+                }
+            }
+        }
 
         // Repeatedly merge the result block with a new block created to the right of it for
         // each glyph

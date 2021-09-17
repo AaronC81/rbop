@@ -119,36 +119,38 @@ where T : Layoutable
 pub fn layout_power<T>(base: Option<&T>, exp: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
 where T : Layoutable
 {
-    // TODO: need to grab the height of the block before this one! refer to however cursor does it
-    // Still need to optionally take base for structured impl
-
-    // Calculate paths for base and exponent
-    let (mut base_path, mut exp_path) = {
-        if let Some(p) = path {
+    // If the base isn't known, generate a layout with some specials and let the layout engine
+    // figure it out! This is only the case for unstructured nodes
+    if base.is_none() {
+        let mut path = if let Some(p) = path {
             if p.next() == 0 {
-                (Some(p.step()), None)
-            } else if p.next() == 1 {
-                (None, Some(p.step()))
+                Some(p.step())
             } else {
-                panic!()
+                None
             }
         } else {
-            (None, None)
-        }
-    };
+            None
+        };
+        
+        let mut exp_layout = exp.layout(renderer, (&mut path).as_mut());
+
+        // Ask this to be rendered as superscript
+        exp_layout.special.baseline_merge_with_high_precedence = true;
+        exp_layout.special.superscript = true;
+
+        return exp_layout
+    }    
 
     // Lay out base and exponent
-    let base_layout = if let Some(base) = base {
-        base.layout(
-            renderer,
-            (&mut base_path).as_mut()
-        )
-    } else {
-        todo!(); // TODO
-    };
+    // (This is only used for structured, and structured nodes don't support a cursor, so we can
+    // pass no path)
+    let base_layout = base.unwrap().layout(
+        renderer,
+        None
+    );
     let exp_layout = exp.layout(
         renderer,
-        (&mut exp_path).as_mut()
+        None
     );
 
     // We're going to merge with `merge_in_place`, and want this:

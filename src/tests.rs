@@ -793,7 +793,6 @@ fn test_power() {
         dec!(8),
     );
 
-    // Movement within powers
     let tree = UnstructuredNodeRoot { root: uns_list!(
         token!(1),
         token!(2),
@@ -804,6 +803,39 @@ fn test_power() {
         vec![
             "  34",
             "12  ",
+        ],
+    );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        UnstructuredNode::Fraction(tokens!(1 2), tokens!(3 4)),
+        token!(+),
+        token!(5),
+        UnstructuredNode::Power(tokens!(6 7))
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            "12  67",
+            "--+5  ",
+            "34    ",
+        ],
+    );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        UnstructuredNode::Parentheses(uns_list!(
+            UnstructuredNode::Fraction(tokens!(1 2), tokens!(3 4)),
+            token!(+),
+            token!(5),
+        )),
+        UnstructuredNode::Power(tokens!(6 7))
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            "      67",
+            "/12  \\  ",
+            "|--+5|  ",
+            "\\34  /  ",
         ],
     );
 }

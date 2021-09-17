@@ -99,6 +99,9 @@ mod ascii_calc {
                 Key::Char('s') => Some(UnstructuredNode::Sqrt(
                     UnstructuredNodeList { items: vec![] }
                 )),
+                Key::Char('^') => Some(UnstructuredNode::Power(
+                    UnstructuredNodeList { items: vec![] }
+                )),
     
                 Key::Left => { root.move_left(&mut nav_path, &mut renderer, None); None }
                 Key::Right => { root.move_right(&mut nav_path, &mut renderer, None); None }

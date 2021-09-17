@@ -321,16 +321,16 @@ impl LayoutBlock {
             // the normally-aligned part (&self) the base, and the superscript-aligned part (other)
             // the exponent!
             
-            // Shift this block, the base, down by its own height
+            // Shift this block, the base, down by the exponent's height
             // Ideally we'd shift the exponent up, but we can't shift negatively - we can use this
             // to achieve the same thing though
-            let base = self.offset(0, self.area.height);
+            let base = self.offset(0, other.area.height);
 
             // There's no need to shift the exponent - we expect that it was moved to the right
             // prior to calling this
 
             // Merge them both in place! Use the base's baseline
-            return base.merge_in_place(&other, MergeBaseline::SelfAsBaseline);
+            return base.merge_in_place(other, MergeBaseline::SelfAsBaseline);
         }
 
         // Whose baseline is greater?

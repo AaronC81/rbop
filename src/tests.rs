@@ -838,6 +838,30 @@ fn test_power() {
             "\\34  /  ",
         ],
     );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        token!(1),
+        token!(+),
+        token!(2),
+        UnstructuredNode::Power(tokens!(2)),
+        UnstructuredNode::Power(tokens!(3)),
+        UnstructuredNode::Power(tokens!(4)),
+        token!(+),
+        token!(1),
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            "     4  ",
+            "    3   ",
+            "   2    ",
+            "1+2   +1",
+        ],
+    );
+    assert_eq!(
+        tree.upgrade().unwrap().evaluate().unwrap(),
+        dec!(16777218)
+    )
 }
 
 #[test]

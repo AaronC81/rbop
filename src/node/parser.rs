@@ -55,15 +55,16 @@ impl<'a> Parser<'a> {
     ///
     /// Returns a Result since the exponent node will need to be upgraded if a Power is found.
     fn accepts_power(&mut self, node: StructuredNode) -> Result<StructuredNode, Box<dyn Error>> {
-        if let Some(UnstructuredNode::Power(exp)) = self.current() {
+        let mut result = node;
+        while let Some(UnstructuredNode::Power(exp)) = self.current() {
             self.advance();
-            Ok(StructuredNode::Power(
-                box node,
+            result = StructuredNode::Power(
+                box result,
                 box exp.upgrade()?,
-            ))
-        } else {
-            Ok(node)
+            )
         }
+
+        Ok(result)
     } 
 
     fn parse_level1(&mut self) -> Result<StructuredNode, Box<dyn Error>> {

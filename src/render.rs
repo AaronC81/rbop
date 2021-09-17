@@ -331,6 +331,11 @@ impl LayoutBlock {
 
             // Merge them both in place! Use the base's baseline
             return base.merge_in_place(other, MergeBaseline::SelfAsBaseline);
+
+            // TODO: cursor plus superscript is currently quite broken:
+            //   - It'll bind to the cursor if it's before one
+            //   - The cursor isn't the correct height after one (which would actually solve the
+            //     first issue, I think?)
         }
 
         // Whose baseline is greater?
@@ -423,7 +428,11 @@ impl LayoutBlock {
 
         // Check for layouts which want to be merged with high precedence
         let mut layouts = layouts.to_vec();
+
+        // Actual indexes will change as we're iterating - store an offset
+        let mut i_offset = 0;
         for (i, layout) in layouts.clone().into_iter().enumerate() {
+            let i = i - i_offset;
             if layout.special.baseline_merge_with_high_precedence {
                 // Get the layout to this one's left (or do nothing if it's at the start, in which
                 // case .get will be None)
@@ -436,7 +445,10 @@ impl LayoutBlock {
                     // Insert new merged layout
                     layouts.insert(i - 1, layout_to_left.merge_along_baseline(
                         &layout.move_right_of_other(&layout_to_left)
-                    ))
+                    ));
+
+                    // Indexes of future items have shifted down by 1
+                    i_offset += 1;
                 }
             }
         }

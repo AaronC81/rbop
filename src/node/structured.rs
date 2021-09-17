@@ -229,7 +229,7 @@ impl Layoutable for StructuredNode {
             StructuredNode::Parentheses(inner)
                 => common::layout_parentheses(inner.deref(), renderer, path),
             StructuredNode::Power(base, exp)
-                => common::layout_power(base.deref(), exp.deref(), renderer, path),
+                => common::layout_power(Some(base.deref()), exp.deref(), renderer, path),
         }
     }
 }

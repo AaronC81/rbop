@@ -31,7 +31,7 @@ pub enum UnstructuredNode {
     Sqrt(UnstructuredNodeList),
     Fraction(UnstructuredNodeList, UnstructuredNodeList),
     Parentheses(UnstructuredNodeList),
-    Power(UnstructuredNodeList, UnstructuredNodeList),
+    Power(UnstructuredNodeList),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -99,14 +99,12 @@ impl Navigable for UnstructuredNode {
                     panic!("index out of range for divide navigation")
                 }
             },
-            UnstructuredNode::Power(base, exp) => {
-                if next_index == 0 {
-                    base.navigate_trace(step_path, trace)
-                } else if next_index == 1 {
-                    exp.navigate_trace(step_path, trace)
-                } else {
+            UnstructuredNode::Power(exp) => {
+                if next_index != 0 {
                     panic!("index out of range for power navigation")
                 }
+
+                exp.navigate_trace(step_path, trace)
             }
             UnstructuredNode::Token(_) => panic!("cannot navigate into token"),
         }
@@ -164,24 +162,7 @@ impl UnstructuredNodeRoot {
 
         // Are we at the end of this node?
         if index == children.len() {
-            // Special case: are we currently in the base slot of a power node?
-            let node_list = self.nav_nodes_outwards(path);
-
-            // First node would be the power
-            if let Some((_, _, UnstructuredNode::Power(b, _))) = node_list.first() {
-                // Index -1 in nav list will be for this unstructured node list, so index -2
-                // will be index into power (0 = base, 1 = exp)
-                if path[path.len() - 2] == 0 {
-                    // Yes, we're in the base slot of a power node - move to the start of the
-                    // exponent slot
-                    path.pop(2);
-                    path.push(1);
-                    path.push(0);
-                    return;
-                }
-            }
-
-            // OK, we're past the special cases. Is there another node above this one?
+            // Is there another node above this one?
             if !path.root() {
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
@@ -197,7 +178,7 @@ impl UnstructuredNodeRoot {
 
             match right_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_, _) => {
+                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) => {
                     // Navigate into its first/only slot, and start at the first item of the
                     // unstructured
                     path.push(0);
@@ -220,24 +201,7 @@ impl UnstructuredNodeRoot {
 
         // Are we at the start of this node?
         if index == 0 {
-            // Special case: are we currently in the exponent slot of a power node?
-            let node_list = self.nav_nodes_outwards(path);
-
-            // First node would be the power
-            if let Some((_, _, UnstructuredNode::Power(b, _))) = node_list.first() {
-                // Index -1 in nav list will be for this unstructured node list, so index -2
-                // will be index into power (0 = base, 1 = exp)
-                if path[path.len() - 2] == 1 {
-                    // Yes, we're in the exponent slot of a power node - move to the end of the
-                    // base slot
-                    path.pop(2);
-                    path.push(0);
-                    path.push(b.items.len());
-                    return;
-                }
-            }
-
-            // OK, we're past the special cases. Is there another node above this one?
+            // Is there another node above this one?
             if !path.root() {
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
@@ -253,19 +217,12 @@ impl UnstructuredNodeRoot {
 
             match left_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(n) | UnstructuredNode::Fraction(n, _) | UnstructuredNode::Parentheses(n) => {
+                UnstructuredNode::Sqrt(n) | UnstructuredNode::Fraction(n, _) | UnstructuredNode::Parentheses(n) | UnstructuredNode::Power(n) => {
                     // Navigate into its first/only slot, and start at the last item of the
                     // unstructured
                     path.push(0);
                     path.push(n.items.len());
                 },
-
-                UnstructuredNode::Power(_, e) => {
-                    // Move into the exponent slot (index 1), and start at the list item of the
-                    // unstructured
-                    path.push(1);
-                    path.push(e.items.len());
-                }
 
                 // Anything else, nothing special needed
                 UnstructuredNode::Token(_) => (),
@@ -345,7 +302,7 @@ impl UnstructuredNodeRoot {
         current_node.items.insert(index, new_node.clone());
 
         match new_node {
-            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_, _) => {
+            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) => {
                 // Move into the new node
                 path.push(0);
                 path.push(0);
@@ -471,8 +428,9 @@ impl Upgradable for UnstructuredNode {
             UnstructuredNode::Fraction(a, b)
                 => Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)),
 
-            UnstructuredNode::Power(b, e)
-                => Ok(StructuredNode::Power(box b.upgrade()?, box e.upgrade()?)),
+            // Parser should always handle this
+            UnstructuredNode::Power(e)
+                => Err(box NodeError("no base given for power".into())),
 
             UnstructuredNode::Token(_) => Err(box NodeError("token cannot be upgraded".into())),
         }
@@ -497,8 +455,8 @@ impl Layoutable for UnstructuredNode {
                 => common::layout_fraction(top, bottom, renderer, path),
             UnstructuredNode::Parentheses(inner)
                 => common::layout_parentheses(inner, renderer, path),
-            UnstructuredNode::Power(base, exp)
-                => common::layout_power(base, exp, renderer, path),
+            UnstructuredNode::Power(exp)
+                => common::layout_power(None, exp, renderer, path),
         }
     }
 }
@@ -682,9 +640,8 @@ impl Serializable for UnstructuredNode {
                 n.append(&mut i.serialize());
                 n
             },
-            UnstructuredNode::Power(b, e) => {
+            UnstructuredNode::Power(e) => {
                 let mut n = vec![4];
-                n.append(&mut b.serialize());
                 n.append(&mut e.serialize());
                 n
             }
@@ -707,7 +664,6 @@ impl Serializable for UnstructuredNode {
             )),
             3 => Some(UnstructuredNode::Parentheses(UnstructuredNodeList::deserialize(bytes)?)),
             4 => Some(UnstructuredNode::Power(
-                UnstructuredNodeList::deserialize(bytes)?,
                 UnstructuredNodeList::deserialize(bytes)?,
             )),
 

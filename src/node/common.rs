@@ -116,9 +116,12 @@ where T : Layoutable
     ])
 }
 
-pub fn layout_power<T>(base: &T, exp: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+pub fn layout_power<T>(base: Option<&T>, exp: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
 where T : Layoutable
 {
+    // TODO: need to grab the height of the block before this one! refer to however cursor does it
+    // Still need to optionally take base for structured impl
+
     // Calculate paths for base and exponent
     let (mut base_path, mut exp_path) = {
         if let Some(p) = path {
@@ -135,11 +138,15 @@ where T : Layoutable
     };
 
     // Lay out base and exponent
-    let base_layout = base.layout(
-        renderer,
-        (&mut base_path).as_mut()
-    );
-    let mut exp_layout = exp.layout(
+    let base_layout = if let Some(base) = base {
+        base.layout(
+            renderer,
+            (&mut base_path).as_mut()
+        )
+    } else {
+        todo!(); // TODO
+    };
+    let exp_layout = exp.layout(
         renderer,
         (&mut exp_path).as_mut()
     );

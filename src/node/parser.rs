@@ -49,6 +49,23 @@ impl<'a> Parser<'a> {
         self.index >= self.nodes.len()
     }
 
+    /// Designed to wrap the return value of a `parse_xxx` function, indicating that this node type
+    /// can have a power bound to it. If a Power is the next unstructured node, returns a Power
+    /// structured node. Otherwise returns the original node parameter.
+    ///
+    /// Returns a Result since the exponent node will need to be upgraded if a Power is found.
+    fn accepts_power(&mut self, node: StructuredNode) -> Result<StructuredNode, Box<dyn Error>> {
+        if let Some(UnstructuredNode::Power(exp)) = self.current() {
+            self.advance();
+            Ok(StructuredNode::Power(
+                box node,
+                box exp.upgrade()?,
+            ))
+        } else {
+            Ok(node)
+        }
+    } 
+
     fn parse_level1(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
         let mut out = self.parse_level2()?;
 
@@ -172,22 +189,21 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            StructuredNode::Number(number)
+            self.accepts_power(StructuredNode::Number(number))?
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {
             self.advance();
-            StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)
+            self.accepts_power(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?))?
         } else if let Some(UnstructuredNode::Sqrt(n)) = self.current() {
             self.advance();
-            StructuredNode::Sqrt(box n.upgrade()?)
+            self.accepts_power(StructuredNode::Sqrt(box n.upgrade()?))?
         } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
             self.advance();
-            StructuredNode::Parentheses(box inner.upgrade()?)
-        } else if let Some(UnstructuredNode::Power(b, e)) = self.current() {
-            self.advance();
-            StructuredNode::Power(box b.upgrade()?, box e.upgrade()?)
+            self.accepts_power(StructuredNode::Parentheses(box inner.upgrade()?))?
+        } else if let Some(UnstructuredNode::Power(_)) = self.current() {
+            return Err(box NodeError("no base given for power".into()))
         } else if let Some(Token::Variable(v)) = self.current_token() {
             self.advance();
-            StructuredNode::Variable(v)
+            self.accepts_power(StructuredNode::Variable(v))?
         } else {
             return Err(box NodeError("expected a unit".into()))
         };

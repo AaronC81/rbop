@@ -14,7 +14,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use num_traits::{One, Zero};
 use rust_decimal::Decimal;
 
-use crate::{Number, error::Error, numeric::DecimalExtensions};
+use crate::{Number, error::Error, decimal_ext::DecimalExtensions};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which

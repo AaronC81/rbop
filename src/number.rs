@@ -3,7 +3,7 @@ use core::{cmp::Ordering, ops::{Add, Div, Mul, Neg, Sub}};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use rust_decimal::Decimal;
 
-use crate::numeric::DecimalExtensions;
+use crate::decimal_ext::DecimalExtensions;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {

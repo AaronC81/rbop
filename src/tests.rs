@@ -2,9 +2,8 @@ use core::str::FromStr;
 
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
-use crate::numeric::Fraction;
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
-use crate::{Number, UnstructuredItem, UnstructuredNodeList, numeric};
+use crate::{Number, UnstructuredItem, UnstructuredNodeList, decimal_ext};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
@@ -906,36 +905,6 @@ fn test_serialize() {
     assert_eq!(
         reserialize!(e),
         e
-    );
-}
-
-#[test]
-fn test_decimal_to_fraction() {
-    let accuracy = raw_dec!(0.00000000000001);
-
-    assert_eq!(
-        numeric::decimal_to_fraction(raw_dec!(0.5), accuracy),
-        Fraction::new(raw_dec!(1), raw_dec!(2)),
-    );
-
-    assert_eq!(
-        numeric::decimal_to_fraction(raw_dec!(0.3333333333333333333333), accuracy),
-        Fraction::new(raw_dec!(1), raw_dec!(3)),
-    );
-
-    assert_eq!(
-        numeric::decimal_to_fraction(raw_dec!(24) / raw_dec!(7), accuracy),
-        Fraction::new(raw_dec!(24), raw_dec!(7)),
-    );
-
-    assert_eq!(
-        numeric::decimal_to_fraction(raw_dec!(54321) / raw_dec!(123456789), accuracy),
-        Fraction::new(raw_dec!(18107), raw_dec!(41152263)),
-    );
-
-    assert_eq!(
-        numeric::decimal_to_fraction(raw_dec!(10).powi(20) / raw_dec!(10).powi(5), accuracy),
-        Fraction::new(raw_dec!(10).powi(15), raw_dec!(1)),
     );
 }
 

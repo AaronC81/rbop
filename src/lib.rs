@@ -16,7 +16,7 @@ pub mod node;
 pub mod nav;
 pub mod render;
 pub mod renderers;
-pub mod numeric;
+pub mod decimal_ext;
 pub mod number;
 
 #[cfg(test)]

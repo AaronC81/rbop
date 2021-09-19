@@ -13,7 +13,7 @@ use rust_decimal::{Decimal};
 use crate::Number;
 use crate::error::{Error, MathsError};
 use crate::node::common;
-use crate::numeric::DecimalExtensions;
+use crate::decimal_ext::DecimalExtensions;
 use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer};
 use crate::nav::NavPathNavigator;
 

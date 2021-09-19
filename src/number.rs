@@ -120,7 +120,7 @@ impl Number {
         let mut n = *self;
 
         // Repeatedly multiply 
-        for _ in 0..exp {
+        for _ in 1..exp.abs() {
             n = n * *self;
         }
         

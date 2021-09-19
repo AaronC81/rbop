@@ -1043,7 +1043,33 @@ fn test_reduction() {
     assert_eq!(
         reduce!(simplify!(tokens!(3 / 5 + 2 / 3 + 7 / 4))),
         SimplifiedNode::Number(rat!(181, 60))
-    )
+    );
+
+    assert_eq!(
+        reduce!(simplify!(uns_list!(
+            UnstructuredNode::Fraction(
+                tokens!(2),
+                tokens!(3),
+            )
+        ))),
+        SimplifiedNode::Number(rat!(2, 3))
+    );
+
+    assert_eq!(
+        reduce!(simplify!(uns_list!(
+            token!(5),
+            UnstructuredNode::Power(uns_list!(
+                UnstructuredNode::Fraction(
+                    tokens!(2),
+                    tokens!(3),
+                )
+            ))
+        ))),
+        SimplifiedNode::Power(
+            box SimplifiedNode::Number(rat!(25)),
+            box SimplifiedNode::Number(rat!(1, 3)),
+        )
+    );
 }
 
 #[bench]

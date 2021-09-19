@@ -202,7 +202,7 @@ mod window_calc {
 
                     let result = self.root.upgrade().map(|x| x.evaluate()).flatten();
                     renderer.text_layout(&match result {
-                        Ok(number) => format!("{}", number),
+                        Ok(number) => format!("{:?}", number),
                         Err(error) => error.to_string(),   
                     })
                 };

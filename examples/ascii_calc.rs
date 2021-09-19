@@ -150,7 +150,7 @@ mod ascii_calc {
                     // try to evaluate this now, which might fail if there are maths errors or
                     // similar.
                     match upgraded.evaluate() {
-                        Ok(result) => write!(stdout, "{}", result)?,
+                        Ok(result) => write!(stdout, "{:?}", result)?,
                         Err(err) => write!(stdout, "Evaluation error: {}", err)?,
                     }
                     

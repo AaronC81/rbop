@@ -2,7 +2,7 @@ use alloc::{boxed::Box, string::ToString, vec};
 use num_traits::Zero;
 use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}};
 
-use crate::error::{Error, NodeError};
+use crate::{Number, error::{Error, NodeError}};
 
 use super::{structured::StructuredNode, unstructured::{Token, UnstructuredNode, Upgradable}};
 
@@ -141,9 +141,14 @@ impl<'a> Parser<'a> {
                 number = -number;
             }
 
+            let mut is_decimal = false;
+
             // Is the next token a decimal point?
             if let Some(Token::Point) = self.current_token() {
                 self.advance();
+
+                // 3. should be parsed as a decimal, not a rational
+                is_decimal = true;
 
                 // Alright, this could have a decimal part - is there a digit after the point?
                 // (If not, that's fine, do nothing - we accept "3.")
@@ -190,7 +195,13 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            self.accepts_power(StructuredNode::Number(number))?
+            self.accepts_power(StructuredNode::Number(
+                if is_decimal {
+                    Number::Decimal(number)
+                } else {
+                    Number::Rational(number.to_i64().unwrap(), 1)
+                }
+            ))?
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {
             self.advance();
             self.accepts_power(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?))?

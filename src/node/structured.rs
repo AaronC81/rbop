@@ -7,9 +7,10 @@ use core::str::FromStr;
 use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::{vec, vec::Vec};
-use num_traits::{One, Zero};
+use num_traits::{FromPrimitive, One, Zero};
 use rust_decimal::{Decimal};
 
+use crate::Number;
 use crate::error::{Error, MathsError};
 use crate::node::common;
 use crate::numeric::DecimalExtensions;
@@ -20,7 +21,7 @@ use super::simplified::{Simplifiable, SimplifiedNode};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum StructuredNode {
-    Number(Decimal),
+    Number(Number),
     Variable(char),
     Sqrt(Box<StructuredNode>),
     Power(Box<StructuredNode>, Box<StructuredNode>),
@@ -92,14 +93,14 @@ impl StructuredNode {
     }
 
     /// Evaluates this node into a single number.
-    pub fn evaluate(&self) -> Result<Decimal, Box<dyn Error>> {
+    pub fn evaluate(&self) -> Result<Number, Box<dyn Error>> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
             StructuredNode::Variable(c) => Err(box MathsError("cannot evaluate variable".into())),
             StructuredNode::Sqrt(inner) =>
-                inner.evaluate()?.sqrt().ok_or(box MathsError("illegal sqrt".into())),
+                inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(box MathsError("illegal sqrt".into())),
             StructuredNode::Power(b, e) =>
-                Ok(b.evaluate()?.powd(e.evaluate()?)),
+                Ok(b.evaluate()?.to_decimal().powd(e.evaluate()?.to_decimal()).into()),
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
             StructuredNode::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
             StructuredNode::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
@@ -187,7 +188,7 @@ fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, left: &StructuredNod
 impl Layoutable for StructuredNode {
     fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
         match self {
-            StructuredNode::Number(mut number) => {
+            StructuredNode::Number(Number::Decimal(mut number)) => {
                 let negative = number < Decimal::zero();
                 if negative {
                     number = -number;
@@ -214,6 +215,18 @@ impl Layoutable for StructuredNode {
                 }
 
                 LayoutBlock::layout_horizontal(&glyph_layouts[..])
+            },
+            StructuredNode::Number(Number::Rational(numer, denom)) => {
+                if *denom == 1 {
+                    StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())).layout(renderer, path)
+                } else {
+                    common::layout_fraction(
+                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())),
+                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*denom).unwrap())),
+                        renderer,
+                        None
+                    )
+                }
             },
 
             StructuredNode::Variable(v) => LayoutBlock::from_glyph(renderer, Glyph::Variable { name: *v }),
@@ -260,7 +273,7 @@ impl Simplifiable for StructuredNode {
 
             Self::Sqrt(n) => SimplifiedNode::Power(
                 box n.simplify(),
-                box SimplifiedNode::Number(Decimal::from_str("0.5").unwrap()),
+                box SimplifiedNode::Number(Number::Rational(1, 2)),
             ),
             Self::Power(b, e) => SimplifiedNode::Power(
                 box b.simplify(),

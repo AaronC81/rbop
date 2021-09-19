@@ -14,14 +14,14 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use num_traits::{One, Zero};
 use rust_decimal::Decimal;
 
-use crate::{error::Error, numeric::DecimalExtensions};
+use crate::{Number, error::Error, numeric::DecimalExtensions};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which
 /// have the same semantic meaning. This provides an easier platform for performing mathematical
 /// reduction on a node tree.
 pub enum SimplifiedNode {
-    Number(Decimal),
+    Number(Number),
     Variable(char),
     Multiply(Vec<SimplifiedNode>),
     Power(Box<SimplifiedNode>, Box<SimplifiedNode>),
@@ -31,12 +31,12 @@ pub enum SimplifiedNode {
 impl SimplifiedNode {
     /// Returns a new node: a multiplication of this node by -1.
     pub fn negate(self) -> SimplifiedNode {
-        Self::Multiply(vec![Self::Number(-Decimal::one()), self])
+        Self::Multiply(vec![Self::Number(-Number::one()), self])
     }
 
     /// Returns a new node: this node raised to the power -1.
     pub fn reciprocal(self) -> SimplifiedNode {
-        Self::Power(box self, box Self::Number(-Decimal::one()))
+        Self::Power(box self, box Self::Number(-Number::one()))
     }
 
     /// Sorts the entire node tree, and returns &mut self to allow method chaining.
@@ -148,15 +148,34 @@ impl SimplifiedNode {
                 b.reduce()?;
                 e.reduce()?;
 
-                // If the base is a number, and the power is a whole number (i.e. not a root), we
-                // can perform that power and reduce to the result with no loss in accuracy
-                if let Self::Number(bn) = b.as_ref() {
-                    if let Self::Number(en) = e.as_ref() {
-                        if en.is_whole() {
-                            *self = Self::Number(bn.powd(*en));
-                            status = PerformedReduction;
+                // What's the base which we're raising to a power?
+                match b {
+                    // Variables can't be raised to a power because we don't know what they are, so 
+                    // no reduction can be done here.
+                    box SimplifiedNode::Variable(_) => (),
+
+                    box SimplifiedNode::Number(base) => {
+                        // Technically a number could always be raised to the power here, but it
+                        // kind of depends what the base and exponent are.
+
+                        // Is the exponent a number?
+                        if let box SimplifiedNode::Number(exp) = e {
+                            // OK, so we _can_ raise to it. If it's a whole number, we might as
+                            // well, since no accuracy would be lost
+                            if let Some(exp) = exp.to_whole() {
+                                *self = SimplifiedNode::Number(base.powi(exp));
+                            } else {
+                                // TODO: probably keep as root? maybe split into power now and root later? figure out
+                                todo!();
+                            }
+                        } else {
+                            // The exponent isn't reduced to a number, so we can't raise to it!
                         }
-                    }
+                    },
+
+                    box SimplifiedNode::Multiply(_) => todo!(), // TODO: Power each child
+                    box SimplifiedNode::Power(_, _) => todo!(), // TODO: Merge powers
+                    box SimplifiedNode::Add(_) => todo!(),      // TODO: Expand
                 }
             }
 
@@ -168,12 +187,12 @@ impl SimplifiedNode {
                 if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
                     // Are any of numbers 0? If so, this ENTIRE multiplication node evaluates to 0
                     if numbers.iter().any(|n| n.is_zero()) {
-                        *self = Self::Number(Decimal::zero());
+                        *self = Self::Number(Number::zero());
                         return Ok(PerformedReduction)
                     }
 
                     // Multiply all of these together
-                    let result = numbers.iter().fold(Decimal::one(), |a, b| a * **b);
+                    let result = numbers.iter().fold(Number::one(), |a, b| a * **b);
 
                     // Delete the multiplied nodes and insert this onto the beginning
                     v.drain(0..v.len());
@@ -196,7 +215,7 @@ impl SimplifiedNode {
                 // Are there numbers at the start?
                 if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
                     // Add all of these together
-                    let result = numbers.iter().fold(Decimal::zero(), |a, b| a + **b);
+                    let result = numbers.iter().fold(Number::zero(), |a, b| a + **b);
 
                     // Delete the added nodes and insert this onto the beginning
                     v.drain(0..v.len());
@@ -240,7 +259,7 @@ impl SimplifiedNode {
     
     /// Collects numbers from the beginning of a series of nodes. If there are no numbers at the 
     /// start, returns None.
-    fn collect_numbers_from_start(vec: &[SimplifiedNode]) -> Option<Vec<&Decimal>> {
+    fn collect_numbers_from_start(vec: &[SimplifiedNode]) -> Option<Vec<&Number>> {
         // Are there numbers at the start?
         if let Some(Self::Number(first_n)) = vec.get(0) {
             // Yep! Collect all of the numbers

@@ -4,7 +4,7 @@ use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::numeric::Fraction;
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
-use crate::{UnstructuredItem, UnstructuredNodeList, numeric};
+use crate::{Number, UnstructuredItem, UnstructuredNodeList, numeric};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
@@ -47,7 +47,16 @@ macro_rules! render {
     ($n:expr $(,)?) => { render!($n, None, None) };
 }
 
+macro_rules! rat {
+    ($n:literal)             => { Number::Rational($n, 1)  };
+    ($n:literal, $d:literal) => { Number::Rational($n, $d) };
+}
+
 macro_rules! dec {
+    ($l:literal) => { Number::Decimal(Decimal::from_str(stringify!($l)).unwrap()) };
+}
+
+macro_rules! raw_dec {
     ($l:literal) => { Decimal::from_str(stringify!($l)).unwrap() };
 }
 
@@ -153,7 +162,7 @@ fn test_upgrade_negative_numbers() {
     // No ambiguity between minus and subtract
     assert_eq!(
         tokens!(1 - - 2).upgrade().unwrap().evaluate().unwrap(),
-        Decimal::from(3)
+        rat!(3)
     );
 }
 
@@ -191,7 +200,7 @@ fn test_decimals() {
         dec!(0.2)
     );
 
-    // Check we accept the "3." form 
+    // Check we accept the "3." form, and that it becomes a decimal rather than a rational
     assert_eq!(
         tokens!(3 . + 2 .).upgrade().unwrap().evaluate().unwrap(),
         dec!(5)
@@ -336,6 +345,20 @@ fn test_ascii_render() {
             "     90     "
         ],
     );
+
+    // Rationals which aren't whole should be rendered as fractions
+    let tree = StructuredNode::Add(
+        box StructuredNode::Number(rat!(2, 3)),
+        box StructuredNode::Number(rat!(1)),
+    );
+    assert_eq!(
+        render!(tree),
+        vec![
+            "2  ",
+            "-+1",
+            "3  ",
+        ]
+    )
 }
 
 #[test]
@@ -680,7 +703,7 @@ fn test_implicit_multiply() {
             token!(var x),
         ).upgrade().unwrap(),
         StructuredNode::Multiply(
-            box StructuredNode::Number(dec!(2)),
+            box StructuredNode::Number(rat!(2)),
             box StructuredNode::Variable('x'),
         )
     );
@@ -710,10 +733,10 @@ fn test_implicit_multiply() {
             )),
         ).upgrade().unwrap(),
         StructuredNode::Multiply(
-            box StructuredNode::Number(dec!(2)),
+            box StructuredNode::Number(rat!(2)),
             box StructuredNode::Parentheses(
                 box StructuredNode::Add(
-                    box StructuredNode::Number(dec!(1)),
+                    box StructuredNode::Number(rat!(1)),
                     box StructuredNode::Variable('x'),
                 )
             )
@@ -737,7 +760,7 @@ fn test_implicit_multiply() {
                     box StructuredNode::Variable('z'),
                 ),
             ),
-            box StructuredNode::Number(dec!(2)),
+            box StructuredNode::Number(rat!(2)),
         )
     );
 }
@@ -888,31 +911,31 @@ fn test_serialize() {
 
 #[test]
 fn test_decimal_to_fraction() {
-    let accuracy = dec!(0.00000000000001);
+    let accuracy = raw_dec!(0.00000000000001);
 
     assert_eq!(
-        numeric::decimal_to_fraction(dec!(0.5), accuracy),
-        Fraction::new(dec!(1), dec!(2)),
+        numeric::decimal_to_fraction(raw_dec!(0.5), accuracy),
+        Fraction::new(raw_dec!(1), raw_dec!(2)),
     );
 
     assert_eq!(
-        numeric::decimal_to_fraction(dec!(0.3333333333333333333333), accuracy),
-        Fraction::new(dec!(1), dec!(3)),
+        numeric::decimal_to_fraction(raw_dec!(0.3333333333333333333333), accuracy),
+        Fraction::new(raw_dec!(1), raw_dec!(3)),
     );
 
     assert_eq!(
-        numeric::decimal_to_fraction(dec!(24) / dec!(7), accuracy),
-        Fraction::new(dec!(24), dec!(7)),
+        numeric::decimal_to_fraction(raw_dec!(24) / raw_dec!(7), accuracy),
+        Fraction::new(raw_dec!(24), raw_dec!(7)),
     );
 
     assert_eq!(
-        numeric::decimal_to_fraction(dec!(54321) / dec!(123456789), accuracy),
-        Fraction::new(dec!(18107), dec!(41152263)),
+        numeric::decimal_to_fraction(raw_dec!(54321) / raw_dec!(123456789), accuracy),
+        Fraction::new(raw_dec!(18107), raw_dec!(41152263)),
     );
 
     assert_eq!(
-        numeric::decimal_to_fraction(dec!(10).powi(20) / dec!(10).powi(5), accuracy),
-        Fraction::new(dec!(10).powi(15), dec!(1)),
+        numeric::decimal_to_fraction(raw_dec!(10).powi(20) / raw_dec!(10).powi(5), accuracy),
+        Fraction::new(raw_dec!(10).powi(15), raw_dec!(1)),
     );
 }
 
@@ -921,20 +944,20 @@ fn test_simplify_structured() {
     assert_eq!(
         simplify!(tokens!(1 2 + 5 6 + 3 4)),
         SimplifiedNode::Add(vec![
-            SimplifiedNode::Number(dec!(12)),
-            SimplifiedNode::Number(dec!(34)),
-            SimplifiedNode::Number(dec!(56)),
+            SimplifiedNode::Number(rat!(12)),
+            SimplifiedNode::Number(rat!(34)),
+            SimplifiedNode::Number(rat!(56)),
         ])
     );
 
     assert_eq!(
         simplify!(tokens!(1 2 + 5 6 * 2 + 3 4)),
         SimplifiedNode::Add(vec![
-            SimplifiedNode::Number(dec!(12)),
-            SimplifiedNode::Number(dec!(34)),
+            SimplifiedNode::Number(rat!(12)),
+            SimplifiedNode::Number(rat!(34)),
             SimplifiedNode::Multiply(vec![
-                SimplifiedNode::Number(dec!(2)),
-                SimplifiedNode::Number(dec!(56)),
+                SimplifiedNode::Number(rat!(2)),
+                SimplifiedNode::Number(rat!(56)),
             ]),
         ])
     );
@@ -970,18 +993,18 @@ fn test_simplify_structured() {
             token!(9),
         )),
         SimplifiedNode::Add(vec![
-            SimplifiedNode::Number(dec!(1)),
+            SimplifiedNode::Number(rat!(1)),
             SimplifiedNode::Multiply(vec![
-                SimplifiedNode::Number(dec!(9)),
+                SimplifiedNode::Number(rat!(9)),
                 SimplifiedNode::Add(vec![
-                    SimplifiedNode::Number(dec!(2)),
-                    SimplifiedNode::Number(dec!(7)),
-                    SimplifiedNode::Number(dec!(8)),
+                    SimplifiedNode::Number(rat!(2)),
+                    SimplifiedNode::Number(rat!(7)),
+                    SimplifiedNode::Number(rat!(8)),
                     SimplifiedNode::Multiply(vec![
-                        SimplifiedNode::Number(dec!(3)),
-                        SimplifiedNode::Number(dec!(4)),
-                        SimplifiedNode::Number(dec!(5)),
-                        SimplifiedNode::Number(dec!(6)),
+                        SimplifiedNode::Number(rat!(3)),
+                        SimplifiedNode::Number(rat!(4)),
+                        SimplifiedNode::Number(rat!(5)),
+                        SimplifiedNode::Number(rat!(6)),
                     ]),
                 ]),
             ]),
@@ -991,10 +1014,10 @@ fn test_simplify_structured() {
     assert_eq!(
         simplify!(tokens!(1 - 5)),
         SimplifiedNode::Add(vec![
-            SimplifiedNode::Number(dec!(1)),
+            SimplifiedNode::Number(rat!(1)),
             SimplifiedNode::Multiply(vec![
-                SimplifiedNode::Number(dec!(-1)),
-                SimplifiedNode::Number(dec!(5)),
+                SimplifiedNode::Number(rat!(-1)),
+                SimplifiedNode::Number(rat!(5)),
             ])
         ])
     );
@@ -1004,12 +1027,12 @@ fn test_simplify_structured() {
 fn test_reduction() {
     assert_eq!(
         reduce!(simplify!(tokens!(1 2 + 5 6 + 3 4))),
-        SimplifiedNode::Number(dec!(102))
+        SimplifiedNode::Number(rat!(102))
     );
 
     assert_eq!(
         reduce!(simplify!(tokens!(1 2 + 5 6 * 2 + 3 4))),
-        SimplifiedNode::Number(dec!(158))
+        SimplifiedNode::Number(rat!(158))
     );
 
     assert_eq!(
@@ -1040,13 +1063,18 @@ fn test_reduction() {
             token!(*),
             token!(9),
         ))),
-        SimplifiedNode::Number(dec!(3394))
+        SimplifiedNode::Number(rat!(3394))
     );
 
     assert_eq!(
         reduce!(simplify!(tokens!(8 / 2))),
-        SimplifiedNode::Number(dec!(4))
+        SimplifiedNode::Number(rat!(4))
     );
+
+    assert_eq!(
+        reduce!(simplify!(tokens!(3 / 5 + 2 / 3 + 7 / 4))),
+        SimplifiedNode::Number(rat!(181, 60))
+    )
 }
 
 #[bench]

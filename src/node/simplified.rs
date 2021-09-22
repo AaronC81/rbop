@@ -121,8 +121,6 @@ impl SimplifiedNode {
     /// semantic meaning as the original tree, aiming for no loss in precision whatsoever, within
     /// the margins of what `Decimal` can represent.
     ///
-    /// This node tree MUST be sorted with `sort` first.
-    ///
     /// Returns a `ReductionResult` encapsulating:
     ///   - Whether any reduction took place
     ///   - If an error occured during reduction
@@ -237,7 +235,7 @@ impl SimplifiedNode {
                         
                         let mut new_exp = SimplifiedNode::Multiply(vec![
                             inner_exp.as_ref().clone(),
-                            inner_exp.as_ref().clone(),
+                            e.as_ref().clone(),
                         ]);
                         new_exp.reduce()?; 
                         
@@ -273,6 +271,9 @@ impl SimplifiedNode {
             }
 
             SimplifiedNode::Multiply(v) => {
+                // Sort children
+                v.sort();
+
                 // Reduce children
                 Self::reduce_vec(v)?;
 
@@ -287,22 +288,45 @@ impl SimplifiedNode {
                     // Multiply all of these together
                     let result = numbers.iter().fold(Number::one(), |a, b| a * **b);
 
-                    // Delete the multiplied nodes and insert this onto the beginning
+                    // Delete the multiplied nodes
                     v.drain(0..v.len());
-                    v.insert(0, Self::Number(result));
+
+                    // Insert this onto the beginning, unless it's 1, in which case it has no effect
+                    // on multiplication
+                    if !result.is_one() {
+                        v.insert(0, Self::Number(result));
+                    }
 
                     status = PerformedReduction
                 }
 
-                // TODO: concatenate x*x*x*... into x^n (needs to work with already-powered ones too)
+                // Combine like terms, re-reducing if any changed
+                if Self::combine_terms(
+                    v,
+                    |n|
+                        if let SimplifiedNode::Power(node, box SimplifiedNode::Number(exp)) = n {
+                            (node, *exp)
+                        } else {
+                            (n, Number::one())
+                        },
+                    |n, c|
+                        SimplifiedNode::Power(box n.clone(), box SimplifiedNode::Number(c))
+                )? == PerformedReduction {
+                    self.reduce()?;
+                    return Ok(PerformedReduction)
+                };
 
                 // If there is only one child, reduce to that child
                 if v.len() == 1 {
                     *self = v[0].clone();
+                    status = PerformedReduction;
                 }
             }
 
             SimplifiedNode::Add(v) => {
+                // Sort children
+                v.sort();
+
                 // Reduce children
                 Self::reduce_vec(v)?;
 
@@ -316,7 +340,6 @@ impl SimplifiedNode {
                     v.insert(0, Self::Number(result));
 
                     status = PerformedReduction
-
                 }
 
                 // If there is only one child, reduce to that child
@@ -329,6 +352,66 @@ impl SimplifiedNode {
         }
 
         Ok(status)
+    }
+
+    fn combine_terms(
+        vec: &mut Vec<SimplifiedNode>,
+        dissect: impl Fn(&SimplifiedNode) -> (&SimplifiedNode, Number),
+        combine: impl Fn(&SimplifiedNode, Number) -> SimplifiedNode,
+    ) -> ReductionResult
+    {
+        // It is assumed that the vec has items, bail if it doesn't
+        if vec.is_empty() {
+            return Ok(ReductionStatus::NoReduction)
+        }
+
+        // TODO: probably not very optimised at all
+        let mut combined_any = false;
+
+        // Dissect each item in the vec into its base node and term count
+        let mut dissected = vec.iter()
+            .map(|x| dissect(x))
+            .collect::<Vec<_>>();
+
+        // Sort this list by the base nodes, so that equal ones will be adjacent
+        dissected.sort_by(|(ln, _), (rn, _)| ln.cmp(rn));
+
+        // Find runs of equal elements
+        let mut result = vec![];
+        let (mut run_node, mut run_term_count) = dissected[0];
+        let mut run_length = 1;
+        for (i, (this_node, this_term_count)) in dissected[1..].iter().enumerate() {
+            if *this_node == run_node {
+                // Keep going with this run!
+                run_term_count = run_term_count + *this_term_count;
+                run_length += 1;
+            } else {
+                // Add the run onto the result vec
+                if run_length > 1 {
+                    result.push(combine(run_node, run_term_count));
+                    combined_any = true;
+                } else {
+                    result.push(vec[i].clone());
+                }
+                
+                // Start a new run
+                run_node = this_node;
+                run_term_count = *this_term_count;
+                run_length = 1;
+            }
+        }
+
+        // Handle end of final run
+        if run_length > 1 {
+            result.push(combine(run_node, run_term_count));
+            combined_any = true;
+        } else {
+            result.push(vec.last().unwrap().clone());
+        }
+
+        // Assign result
+        *vec = result;
+        Ok(if combined_any { ReductionStatus::PerformedReduction } else { ReductionStatus::NoReduction })
     }
 
     /// Reduces a vec of nodes, and re-sorts the vec if any of the reductions changed a child node.

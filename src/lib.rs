@@ -3,6 +3,7 @@
 #![feature(or_patterns)]
 #![feature(test)]
 #![feature(core_intrinsics)]
+#![feature(if_let_guard)]
 
 #![no_std]
 extern crate core;

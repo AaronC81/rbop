@@ -307,9 +307,9 @@ impl SimplifiedNode {
                     v,
                     |n|
                         if let SimplifiedNode::Power(node, box SimplifiedNode::Number(exp)) = n {
-                            (node, *exp)
+                            (node.as_ref().clone(), *exp)
                         } else {
-                            (n, Number::one())
+                            (n.clone(), Number::one())
                         },
                     |n, c|
                         SimplifiedNode::Power(box n.clone(), box SimplifiedNode::Number(c))
@@ -351,12 +351,36 @@ impl SimplifiedNode {
                     status = PerformedReduction
                 }
 
+                // Combine like terms, re-reducing if any changed
+                if Self::combine_terms(
+                    v,
+                    |n|
+                        match n {
+                            // Due to sorting, the number will always be at the start if there is one
+                            // (This is all a pattern! The if_let_guards feature lets us do this.)
+                            SimplifiedNode::Multiply(v)
+                            if let Some(SimplifiedNode::Number(n)) = v.first() => {
+                                // Construct a new multiply out of the non-number nodes
+                                let mut result = SimplifiedNode::Multiply(v[1..].to_vec());
+                                result.reduce(); // TODO: Err ignored
+                                (result, *n)
+                            },
+
+                            _ => (n.clone(), Number::one())
+                        },
+                    |n, c|
+                        SimplifiedNode::Multiply(vec![
+                            SimplifiedNode::Number(c), n
+                        ])
+                )? == PerformedReduction {
+                    self.reduce()?;
+                    return Ok(PerformedReduction)
+                };
+
                 // If there is only one child, reduce to that child
                 if v.len() == 1 {
                     *self = v[0].clone();
                 }
-
-                // TODO: concatenate x+x+... into nx (needs to work with already-multiplied ones too)
             }
         }
 
@@ -365,8 +389,8 @@ impl SimplifiedNode {
 
     fn combine_terms(
         vec: &mut Vec<SimplifiedNode>,
-        dissect: impl Fn(&SimplifiedNode) -> (&SimplifiedNode, Number),
-        combine: impl Fn(&SimplifiedNode, Number) -> SimplifiedNode,
+        dissect: impl Fn(&SimplifiedNode) -> (SimplifiedNode, Number),
+        combine: impl Fn(SimplifiedNode, Number) -> SimplifiedNode,
     ) -> ReductionResult
     {
         // It is assumed that the vec has items, bail if it doesn't
@@ -387,7 +411,7 @@ impl SimplifiedNode {
 
         // Find runs of equal elements
         let mut result = vec![];
-        let (mut run_node, mut run_term_count) = dissected[0];
+        let (mut run_node, mut run_term_count) = dissected[0].clone();
         let mut run_length = 1;
         for (i, (this_node, this_term_count)) in dissected[1..].iter().enumerate() {
             if *this_node == run_node {
@@ -404,7 +428,7 @@ impl SimplifiedNode {
                 }
                 
                 // Start a new run
-                run_node = this_node;
+                run_node = this_node.clone();
                 run_term_count = *this_term_count;
                 run_length = 1;
             }

@@ -1132,6 +1132,39 @@ fn test_reduction() {
             ),
         ]),
     );
+
+    assert_eq!(
+        reduce!(simplify!(uns_list!(
+            token!(2),
+            token!(var x),
+            token!(+),
+            token!(3),
+            token!(var x),
+            UnstructuredNode::Power(tokens!(2)),
+            token!(+),
+            token!(6),
+            token!(var x),
+            UnstructuredNode::Power(tokens!(2)),
+            token!(+),
+            token!(var x),
+            token!(+),
+            token!(7),
+        ))),
+        SimplifiedNode::Add(vec![
+            SimplifiedNode::Number(rat!(7)),
+            SimplifiedNode::Multiply(vec![
+                SimplifiedNode::Number(rat!(3)),
+                SimplifiedNode::Variable('x'),
+            ]),
+            SimplifiedNode::Multiply(vec![
+                SimplifiedNode::Number(rat!(9)),
+                SimplifiedNode::Power(
+                    box SimplifiedNode::Variable('x'),
+                    box SimplifiedNode::Number(rat!(2)),
+                ),
+            ]),
+        ])
+    );
 }
 
 #[bench]

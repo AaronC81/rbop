@@ -1117,6 +1117,21 @@ fn test_reduction() {
             ),
         ])
     );
+
+    assert_eq!(
+        reduce!(simplify!(uns_list!(
+            token!(3),
+            token!(var x),
+            UnstructuredNode::Power(tokens!(2)),
+        ))),
+        SimplifiedNode::Multiply(vec![
+            SimplifiedNode::Number(rat!(3)),
+            SimplifiedNode::Power(
+                box SimplifiedNode::Variable('x'),
+                box SimplifiedNode::Number(rat!(2)),
+            ),
+        ]),
+    );
 }
 
 #[bench]

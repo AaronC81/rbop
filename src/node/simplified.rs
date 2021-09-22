@@ -279,6 +279,8 @@ impl SimplifiedNode {
 
                 // Are there numbers at the start?
                 if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
+                    let numbers_len = numbers.len();
+
                     // Are any of numbers 0? If so, this ENTIRE multiplication node evaluates to 0
                     if numbers.iter().any(|n| n.is_zero()) {
                         *self = Self::Number(Number::zero());
@@ -289,7 +291,7 @@ impl SimplifiedNode {
                     let result = numbers.iter().fold(Number::one(), |a, b| a * **b);
 
                     // Delete the multiplied nodes
-                    v.drain(0..v.len());
+                    v.drain(0..numbers_len);
 
                     // Insert this onto the beginning, unless it's 1, in which case it has no effect
                     // on multiplication
@@ -332,12 +334,19 @@ impl SimplifiedNode {
 
                 // Are there numbers at the start?
                 if let Some(numbers) = Self::collect_numbers_from_start(&v[..]) {
+                    let numbers_len = numbers.len();
+
                     // Add all of these together
                     let result = numbers.iter().fold(Number::zero(), |a, b| a + **b);
 
                     // Delete the added nodes and insert this onto the beginning
-                    v.drain(0..v.len());
-                    v.insert(0, Self::Number(result));
+                    v.drain(0..numbers_len);
+
+                    // Insert this onto the beginning, unless it's 0, in which case it has no effect
+                    // on addition
+                    if !result.is_zero() {
+                        v.insert(0, Self::Number(result));
+                    }
 
                     status = PerformedReduction
                 }

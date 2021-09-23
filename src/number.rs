@@ -1,9 +1,10 @@
-use core::{cmp::Ordering, ops::{Add, Div, Mul, Neg, Sub}};
+use core::{cmp::Ordering, convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
 
+use alloc::{vec, vec::Vec};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use rust_decimal::Decimal;
 
-use crate::decimal_ext::DecimalExtensions;
+use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {
@@ -233,6 +234,47 @@ impl One for Number {
         match *self {
             Self::Decimal(d) => d.is_one(),
             Self::Rational(n, d) => n == d,
+        }
+    }
+}
+
+impl Serializable for Number {
+    fn serialize(&self) -> Vec<u8> {
+        match self {
+            Number::Decimal(d) => {
+                let mut result = vec![1];
+                result.append(&mut d.serialize().to_vec());
+                result
+            }
+
+            Self::Rational(numer, denom) => {
+                let mut result = vec![2];
+                result.append(&mut numer.to_ne_bytes().to_vec());
+                result.append(&mut denom.to_ne_bytes().to_vec());
+                result
+            }
+        }
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        let first_byte = bytes.next()?;
+        match first_byte {
+            1 => {
+                Some(Number::Decimal(Decimal::deserialize(
+                    bytes.take(16).collect::<Vec<_>>().try_into().ok()?
+                )))
+            }
+
+            2 => {
+                let numer: [u8; 8] = bytes.take(8).collect::<Vec<_>>().try_into().ok()?;
+                let denom: [u8; 8] = bytes.take(8).collect::<Vec<_>>().try_into().ok()?;
+                Some(Number::Rational(
+                    i64::from_ne_bytes(numer),
+                    i64::from_ne_bytes(denom),
+                ))
+            }
+
+            _ => None
         }
     }
 }

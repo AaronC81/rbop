@@ -1,4 +1,4 @@
-use core::{cmp::Ordering, convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
+use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
 use alloc::{vec, vec::Vec};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
@@ -183,12 +183,20 @@ impl Add for Number {
     }
 }
 
+impl AddAssign for Number {
+    fn add_assign(&mut self, rhs: Self) { *self = *self + rhs; }
+}
+
 impl Sub for Number {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
     }
+}
+
+impl SubAssign for Number {
+    fn sub_assign(&mut self, rhs: Self) { *self = *self - rhs; }
 }
 
 impl Mul for Number {
@@ -203,6 +211,10 @@ impl Mul for Number {
     }
 }
 
+impl MulAssign for Number {
+    fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; }
+}
+
 impl Div for Number {
     type Output = Self;
     
@@ -210,6 +222,10 @@ impl Div for Number {
     fn div(self, rhs: Self) -> Self::Output {
         self * rhs.reciprocal()
     }
+}
+
+impl DivAssign for Number {
+    fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; }
 }
 
 impl Zero for Number {

@@ -177,13 +177,21 @@ mod window_calc {
                 .expect("unable to create window")
         }
 
+        #[cfg(target_os = "linux")]
+        fn font() -> &'static [u8] {
+            include_bytes!("/usr/share/fonts/Arial.ttf")
+        }
+
+        #[cfg(target_os = "macos")]
+        fn font() -> &'static [u8] {
+            include_bytes!("/System/Library/Fonts/Supplemental/Arial.ttf")
+        }
+
         /// Create a new `Speedy2DRenderer` using the given graphics surface.
         fn create_renderer<'a>(&mut self, graphics: Option<&'a mut Graphics2D>) -> Speedy2DRenderer<'a> {
-            // TODO: horrific method of getting the font
-            let font = include_bytes!("/usr/share/fonts/RobotoSlab-Regular.ttf");
             Speedy2DRenderer {
                 graphics,
-                font: Font::new(font).unwrap(),
+                font: Font::new(WindowCalc::font()).unwrap(),
             }
         }
     }

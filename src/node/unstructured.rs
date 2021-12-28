@@ -398,11 +398,11 @@ impl UnstructuredNodeRoot {
 
 /// Implemented by types which can be _upgraded_ - that is, converted into a `StructuredNode`.
 pub trait Upgradable {
-    fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>>;
+    fn upgrade(&self) -> Result<StructuredNode, NodeError>;
 }
 
 impl Upgradable for UnstructuredNodeList {
-    fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn upgrade(&self) -> Result<StructuredNode, NodeError> {
         parser::Parser {
             index: 0,
             nodes: &self.items[..]
@@ -411,13 +411,13 @@ impl Upgradable for UnstructuredNodeList {
 }
 
 impl Upgradable for UnstructuredNodeRoot {
-    fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn upgrade(&self) -> Result<StructuredNode, NodeError> {
         self.root.upgrade()
     }
 }
 
 impl Upgradable for UnstructuredNode {
-    fn upgrade(&self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn upgrade(&self) -> Result<StructuredNode, NodeError> {
         match self {
             UnstructuredNode::Sqrt(inner)
                 => Ok(StructuredNode::Sqrt(box inner.upgrade()?)),
@@ -430,9 +430,9 @@ impl Upgradable for UnstructuredNode {
 
             // Parser should always handle this
             UnstructuredNode::Power(e)
-                => Err(box NodeError("no base given for power".into())),
+                => Err(NodeError::PowerMissingBase),
 
-            UnstructuredNode::Token(_) => Err(box NodeError("token cannot be upgraded".into())),
+            UnstructuredNode::Token(_) => Err(NodeError::CannotUpgradeToken),
         }
     }
 }

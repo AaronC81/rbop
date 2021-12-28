@@ -14,12 +14,12 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn parse(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
+    pub fn parse(&mut self) -> Result<StructuredNode, NodeError> {
         let result = self.parse_level1()?;
 
         // Leftover tokens is an error
         if self.index < self.nodes.len() {
-            Err(box NodeError("unexpected tokens at end of input".into()))
+            Err(NodeError::UnexpectedTokensAtEnd)
         } else {
             Ok(result)
         }
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
     /// structured node. Otherwise returns the original node parameter.
     ///
     /// Returns a Result since the exponent node will need to be upgraded if a Power is found.
-    fn accepts_power(&mut self, node: StructuredNode) -> Result<StructuredNode, Box<dyn Error>> {
+    fn accepts_power(&mut self, node: StructuredNode) -> Result<StructuredNode, NodeError> {
         let mut result = node;
         while let Some(UnstructuredNode::Power(exp)) = self.current() {
             self.advance();
@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
         Ok(result)
     } 
 
-    fn parse_level1(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn parse_level1(&mut self) -> Result<StructuredNode, NodeError> {
         let mut out = self.parse_level2()?;
 
         while !self.eoi() {
@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
         Ok(out)
     }
 
-    fn parse_level2(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn parse_level2(&mut self) -> Result<StructuredNode, NodeError> {
         let mut out = self.parse_level3()?;
 
         while !self.eoi() {
@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
         Ok(out)
     }
 
-    fn parse_level3(&mut self) -> Result<StructuredNode, Box<dyn Error>> {
+    fn parse_level3(&mut self) -> Result<StructuredNode, NodeError> {
         // while loop and flipping allows multiple unary minuses
         let mut parsed_number_is_negative = false;
         while let Some(Token::Subtract) = self.current_token() {
@@ -212,12 +212,12 @@ impl<'a> Parser<'a> {
             self.advance();
             self.accepts_power(StructuredNode::Parentheses(box inner.upgrade()?))?
         } else if let Some(UnstructuredNode::Power(_)) = self.current() {
-            return Err(box NodeError("no base given for power".into()))
+            return Err(NodeError::PowerMissingBase)
         } else if let Some(Token::Variable(v)) = self.current_token() {
             self.advance();
             self.accepts_power(StructuredNode::Variable(v))?
         } else {
-            return Err(box NodeError("expected a unit".into()))
+            return Err(NodeError::ExpectedUnit)
         };
 
         // Construct implicit multiplications as long as the next token is one which can be

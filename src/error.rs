@@ -15,10 +15,10 @@ pub enum NodeError {
 impl fmt::Display for NodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            NodeError::UnexpectedTokensAtEnd => "unexpected tokens at end of input",
+            NodeError::UnexpectedTokensAtEnd => "syntax error",
             NodeError::PowerMissingBase => "no base given for power",
-            NodeError::ExpectedUnit => "expected a unit",
-            NodeError::CannotUpgradeToken => "token cannot be upgraded",
+            NodeError::ExpectedUnit => "syntax error",
+            NodeError::CannotUpgradeToken => "internal syntax error",
         })
     }
 }

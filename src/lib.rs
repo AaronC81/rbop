@@ -4,6 +4,7 @@
 #![feature(test)]
 #![feature(core_intrinsics)]
 #![feature(if_let_guard)]
+#![feature(assert_matches)]
 
 #![no_std]
 extern crate core;

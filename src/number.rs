@@ -1,10 +1,10 @@
 use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
-use alloc::{vec, vec::Vec};
+use alloc::{vec, vec::Vec, boxed::Box};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use rust_decimal::Decimal;
 
-use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable};
+use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::{Error, MathsError}};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {
@@ -130,6 +130,15 @@ impl Number {
             n.reciprocal()
         } else {
             n
+        }
+    }
+
+    /// Divides this number by another number, or returns an error if the divisor is zero.
+    pub fn checked_div(&self, other: Number) -> Result<Number, Box<dyn Error>> {
+        if other.is_zero() {
+            Err(box MathsError("division by zero".into()))
+        } else {
+            Ok(*self / other)
         }
     }
 }

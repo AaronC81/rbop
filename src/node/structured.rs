@@ -104,7 +104,7 @@ impl StructuredNode {
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
             StructuredNode::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
             StructuredNode::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
-            StructuredNode::Divide(a, b) => Ok(a.evaluate()? / b.evaluate()?),
+            StructuredNode::Divide(a, b) => Ok(a.evaluate()?.checked_div(b.evaluate()?)?),
             StructuredNode::Parentheses(inner) => inner.evaluate(),
         }
     }

@@ -1,3 +1,4 @@
+use core::assert_matches::assert_matches;
 use core::str::FromStr;
 
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
@@ -1175,4 +1176,24 @@ fn bench_unstructured_layout(b: &mut Bencher) {
     b.iter(|| {
         black_box(tree.layout(&mut ascii_renderer, None));
     });
+}
+
+#[test]
+fn test_divide_by_zero() {
+    // Rational
+    let result = StructuredNode::Divide(
+        box StructuredNode::Number(rat!(12)),
+        box StructuredNode::Number(rat!(0)),
+    ).disambiguate().unwrap().evaluate();
+    assert_matches!(result, Err(_));
+
+    // Decimal
+    let result = StructuredNode::Add(
+        box StructuredNode::Divide(
+            box StructuredNode::Number(dec!(12)),
+            box StructuredNode::Number(dec!(0)),
+        ),
+        box StructuredNode::Number(dec!(0.1)),
+    ).disambiguate().unwrap().evaluate();
+    assert_matches!(result, Err(_));
 }

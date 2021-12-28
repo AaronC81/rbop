@@ -134,9 +134,9 @@ impl Number {
     }
 
     /// Divides this number by another number, or returns an error if the divisor is zero.
-    pub fn checked_div(&self, other: Number) -> Result<Number, Box<dyn Error>> {
+    pub fn checked_div(&self, other: Number) -> Result<Number, MathsError> {
         if other.is_zero() {
-            Err(box MathsError("division by zero".into()))
+            Err(MathsError::DivisionByZero)
         } else {
             Ok(*self / other)
         }

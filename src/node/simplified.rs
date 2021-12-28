@@ -14,7 +14,7 @@ use alloc::{boxed::Box, format, vec, vec::Vec};
 use num_traits::{One, Zero};
 use rust_decimal::Decimal;
 
-use crate::{Number, error::Error, decimal_ext::DecimalExtensions};
+use crate::{Number, error::{Error, MathsError}, decimal_ext::DecimalExtensions};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which
@@ -499,7 +499,7 @@ pub enum ReductionStatus {
     NoReduction,
 }
 
-pub type ReductionResult = Result<ReductionStatus, Box<dyn Error>>;
+pub type ReductionResult = Result<ReductionStatus, MathsError>;
 
 pub trait Simplifiable {
     /// Converts this node into a `SimplifiedNode` tree.

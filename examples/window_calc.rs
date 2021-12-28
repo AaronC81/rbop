@@ -208,10 +208,12 @@ mod window_calc {
                     let mut renderer = self.create_renderer(Some(graphics));
                     renderer.draw_all(&self.root, Some(&mut self.nav_path.to_navigator()), None);
 
-                    let result = self.root.upgrade().map(|x| x.evaluate()).flatten();
+                    let result = self.root.upgrade().map(|x| x.evaluate());
                     renderer.text_layout(&match result {
-                        Ok(number) => format!("{:?}", number),
-                        Err(error) => error.to_string(),   
+                        Ok(Ok(number)) => format!("{:?}", number),
+
+                        Ok(Err(error)) => error.to_string(),   
+                        Err(error) => error.to_string(),
                     })
                 };
 

@@ -61,7 +61,7 @@ impl StructuredNode {
     /// Returns a clone of this node tree with added parentheses to show the order of operations
     /// when the tree is rendered.
     /// The tree should be upgraded before doing this.
-    pub fn disambiguate(&self) -> Result<StructuredNode, Box<dyn Error>> {
+    pub fn disambiguate(&self) -> Result<StructuredNode, MathsError> {
         Ok(match self {
             // We need to add parentheses around:
             //   - operations which mix precedence, e.g. (3+2)*4
@@ -93,12 +93,12 @@ impl StructuredNode {
     }
 
     /// Evaluates this node into a single number.
-    pub fn evaluate(&self) -> Result<Number, Box<dyn Error>> {
+    pub fn evaluate(&self) -> Result<Number, MathsError> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
-            StructuredNode::Variable(c) => Err(box MathsError("cannot evaluate variable".into())),
+            StructuredNode::Variable(c) => Err(MathsError::MissingVariable),
             StructuredNode::Sqrt(inner) =>
-                inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(box MathsError("illegal sqrt".into())),
+                inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(MathsError::InvalidSqrt),
             StructuredNode::Power(b, e) =>
                 Ok(b.evaluate()?.to_decimal().powd(e.evaluate()?.to_decimal()).into()),
             StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),

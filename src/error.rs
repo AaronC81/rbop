@@ -22,12 +22,21 @@ impl fmt::Display for NodeError {
 }
 impl Error for NodeError {}
 
+
 #[derive(Debug, Clone)]
-pub struct MathsError(pub String);
+pub enum MathsError {
+    DivisionByZero,
+    InvalidSqrt,
+    MissingVariable,
+}
 
 impl fmt::Display for MathsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", match self {
+            MathsError::DivisionByZero => "division by zero",
+            MathsError::InvalidSqrt => "invalid square root",
+            MathsError::MissingVariable => "cannot evaluate variable",
+        })
     }
 }
 impl Error for MathsError {}

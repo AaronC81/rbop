@@ -36,13 +36,18 @@ mod window_calc {
 
     impl<'a> Speedy2DRenderer<'a> {
         /// Uses this renderer's font to lay out the given `text` into a `FormattedTextBlock`.
-        fn text_layout(&mut self, text: &str) -> Rc<FormattedTextBlock> {
-            self.font.layout_text(text, 50.0, TextOptions::new())
+        fn text_layout(&mut self, text: &str, size_reduction_level: u32) -> Rc<FormattedTextBlock> {
+            // Half the default text size for each level of size reduction
+            let mut size = 50.0;
+            for _ in 0..size_reduction_level {
+                size /= 2.0;
+            }
+            self.font.layout_text(text, size, TextOptions::new())
         }
 
         /// Returns the size of the given `text when rendered using this renderer's font.
-        fn text_size(&mut self, text: &str) -> rbop::render::Area {
-            let layout = self.text_layout(text);
+        fn text_size(&mut self, text: &str, size_reduction_level: u32) -> rbop::render::Area {
+            let layout = self.text_layout(text, size_reduction_level);
             rbop::render::Area {
                 width: layout.width() as u64,
                 height: layout.height() as u64,
@@ -50,8 +55,8 @@ mod window_calc {
         }
 
         /// Draws `text` onto the graphics surface at `point`, using this renderer's font.
-        fn text_draw(&mut self, text: &str, point: rbop::render::ViewportPoint) {
-            let layout = &self.text_layout(text);
+        fn text_draw(&mut self, text: &str, point: rbop::render::ViewportPoint, size_reduction_level: u32) {
+            let layout = &self.text_layout(text, size_reduction_level);
             self.graphics.as_mut().unwrap().draw_text(
                 (point.x as f32, point.y as f32),
                 Color::BLACK,
@@ -76,15 +81,22 @@ mod window_calc {
         // There is no hard requirement that this actually matches the size of the glyphs drawn to
         // the screen; for example, we lie that the cursor has a width of 0, to stop the glyphs
         // around the cursor wobbling when it is moved.
-        fn size(&mut self, glyph: rbop::render::Glyph) -> rbop::render::Area {
+        //
+        // The size reduction level starts from 0, and increases by one each time a node is nested
+        // inside another in such a way where the resulting glyph should be drawn smaller. For
+        // example, when you're writing a power, you tend to write the exponent smaller than the
+        // base - so the exponent would have 1 greater size reduction level than the base. You can
+        // completely ignore this if you like! (The built-in AsciiRenderer does - ASCII doesn't 
+        // give us enough resolution to decrease the size of an exponent.)
+        fn size(&mut self, glyph: rbop::render::Glyph, size_reduction_level: u32) -> rbop::render::Area {
             match glyph {
                 rbop::render::Glyph::Digit { number } => 
-                    self.text_size(&format!("{}", number)),
+                    self.text_size(&format!("{}", number), size_reduction_level),
 
-                rbop::render::Glyph::Add => self.text_size("+"),
-                rbop::render::Glyph::Subtract => self.text_size("-"),
-                rbop::render::Glyph::Multiply => self.text_size("*"),
-                rbop::render::Glyph::Divide => self.text_size("/"),
+                rbop::render::Glyph::Add => self.text_size("+", size_reduction_level),
+                rbop::render::Glyph::Subtract => self.text_size("-", size_reduction_level),
+                rbop::render::Glyph::Multiply => self.text_size("*", size_reduction_level),
+                rbop::render::Glyph::Divide => self.text_size("/", size_reduction_level),
 
                 rbop::render::Glyph::Fraction { inner_width } => rbop::render::Area {
                     width: inner_width,
@@ -97,7 +109,7 @@ mod window_calc {
                     width: 0,
                     height,
                 },
-                rbop::render::Glyph::Placeholder => self.text_size("X"),
+                rbop::render::Glyph::Placeholder => self.text_size("X", size_reduction_level),
 
                 // TODO: not everything's implemented
                 rbop::render::Glyph::LeftParenthesis { inner_height } => todo!(),
@@ -117,7 +129,7 @@ mod window_calc {
             //   - How big the glyph is
             //   - How much of the glyph is visible within the viewport, if present
             let ViewportGlyph {
-                glyph: SizedGlyph { glyph, .. },
+                glyph: SizedGlyph { glyph, size_reduction_level, .. },
                 point,
                 ..
             } = viewport_glyph;
@@ -128,11 +140,11 @@ mod window_calc {
             // Match on the glyph to draw  
             match glyph {
                 rbop::render::Glyph::Digit { number } =>
-                    self.text_draw(&format!("{}", number), point),
-                rbop::render::Glyph::Add => self.text_draw("+", point),
-                rbop::render::Glyph::Subtract => self.text_draw("-", point),
-                rbop::render::Glyph::Multiply => self.text_draw("*", point),
-                rbop::render::Glyph::Divide => self.text_draw("/", point),
+                    self.text_draw(&format!("{}", number), point, size_reduction_level),
+                rbop::render::Glyph::Add => self.text_draw("+", point, size_reduction_level),
+                rbop::render::Glyph::Subtract => self.text_draw("-", point, size_reduction_level),
+                rbop::render::Glyph::Multiply => self.text_draw("*", point, size_reduction_level),
+                rbop::render::Glyph::Divide => self.text_draw("/", point, size_reduction_level),
 
                 rbop::render::Glyph::Fraction { inner_width } => 
                     self.graphics.as_mut().unwrap().draw_line(
@@ -149,7 +161,7 @@ mod window_calc {
                         1.0,
                         Color::BLACK
                     ),
-                rbop::render::Glyph::Placeholder => self.text_draw("?", point),
+                rbop::render::Glyph::Placeholder => self.text_draw("?", point, size_reduction_level),
 
                 // TODO: not everything's implemented
                 rbop::render::Glyph::LeftParenthesis { inner_height } => todo!(),
@@ -214,7 +226,7 @@ mod window_calc {
 
                         Ok(Err(error)) => error.to_string(),   
                         Err(error) => error.to_string(),
-                    })
+                    }, 0)
                 };
 
                 graphics.draw_text(
@@ -256,6 +268,9 @@ mod window_calc {
                 )),
 
                 VirtualKeyCode::S => Some(UnstructuredNode::Sqrt(
+                    UnstructuredNodeList { items: vec![] },
+                )),
+                VirtualKeyCode::P => Some(UnstructuredNode::Power(
                     UnstructuredNodeList { items: vec![] },
                 )),
 

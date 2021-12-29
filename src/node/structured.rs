@@ -14,7 +14,7 @@ use crate::Number;
 use crate::error::{Error, MathsError};
 use crate::node::common;
 use crate::decimal_ext::DecimalExtensions;
-use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer};
+use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, LayoutComputationProperties};
 use crate::nav::NavPathNavigator;
 
 use super::simplified::{Simplifiable, SimplifiedNode};
@@ -171,13 +171,13 @@ impl StructuredNode {
 }
 
 /// Calculates layout for a binop, with the operator being the `glyph`.
-fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, left: &StructuredNode, right: &StructuredNode) -> LayoutBlock {
+fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, properties: LayoutComputationProperties, left: &StructuredNode, right: &StructuredNode) -> LayoutBlock {
     // These are structured nodes, which (currently) never have a cursor
 
-    let left_layout = left.layout(renderer, None);
-    let binop_layout = LayoutBlock::from_glyph(renderer, glyph)
+    let left_layout = left.layout(renderer, None, properties);
+    let binop_layout = LayoutBlock::from_glyph(renderer, glyph, properties)
         .move_right_of_other(&left_layout);
-    let right_layout = right.layout(renderer, None)
+    let right_layout = right.layout(renderer, None, properties)
         .move_right_of_other(&binop_layout);
 
     left_layout
@@ -186,7 +186,7 @@ fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, left: &StructuredNod
 }
 
 impl Layoutable for StructuredNode {
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock {
         match self {
             StructuredNode::Number(Number::Decimal(mut number)) => {
                 let negative = number < Decimal::zero();
@@ -204,13 +204,13 @@ impl Layoutable for StructuredNode {
                             Glyph::Digit { number: c.to_digit(10).unwrap() as u8 }
                         }
                     )
-                    .map(|g| LayoutBlock::from_glyph(renderer, g))
+                    .map(|g| LayoutBlock::from_glyph(renderer, g, properties))
                     .collect::<Vec<_>>();
 
                 if negative {
                     glyph_layouts.insert(
                         0, 
-                        LayoutBlock::from_glyph(renderer, Glyph::Subtract)
+                        LayoutBlock::from_glyph(renderer, Glyph::Subtract, properties)
                     )
                 }
 
@@ -218,31 +218,32 @@ impl Layoutable for StructuredNode {
             },
             StructuredNode::Number(Number::Rational(numer, denom)) => {
                 if *denom == 1 {
-                    StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())).layout(renderer, path)
+                    StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())).layout(renderer, path, properties)
                 } else {
                     common::layout_fraction(
                         &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())),
                         &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*denom).unwrap())),
                         renderer,
-                        None
+                        None,
+                        properties,
                     )
                 }
             },
 
-            StructuredNode::Variable(v) => LayoutBlock::from_glyph(renderer, Glyph::Variable { name: *v }),
+            StructuredNode::Variable(v) => LayoutBlock::from_glyph(renderer, Glyph::Variable { name: *v }, properties),
 
-            StructuredNode::Add(left, right) => layout_binop(renderer, Glyph::Add, left, right),
-            StructuredNode::Subtract(left, right) => layout_binop(renderer, Glyph::Subtract, left, right),
-            StructuredNode::Multiply(left, right) => layout_binop(renderer, Glyph::Multiply, left, right),
+            StructuredNode::Add(left, right) => layout_binop(renderer, Glyph::Add, properties, left, right),
+            StructuredNode::Subtract(left, right) => layout_binop(renderer, Glyph::Subtract, properties, left, right),
+            StructuredNode::Multiply(left, right) => layout_binop(renderer, Glyph::Multiply, properties, left, right),
 
             StructuredNode::Divide(top, bottom)
-                => common::layout_fraction(top.deref(), bottom.deref(), renderer, path),
+                => common::layout_fraction(top.deref(), bottom.deref(), renderer, path, properties),
             StructuredNode::Sqrt(inner)
-                => common::layout_sqrt(inner.deref(), renderer, path),
+                => common::layout_sqrt(inner.deref(), renderer, path, properties),
             StructuredNode::Parentheses(inner)
-                => common::layout_parentheses(inner.deref(), renderer, path),
+                => common::layout_parentheses(inner.deref(), renderer, path, properties),
             StructuredNode::Power(base, exp)
-                => common::layout_power(Some(base.deref()), exp.deref(), renderer, path),
+                => common::layout_power(Some(base.deref()), exp.deref(), renderer, path, properties),
         }
     }
 }

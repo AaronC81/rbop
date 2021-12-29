@@ -16,7 +16,7 @@ impl AsciiRenderer {
 }
 
 impl Renderer for AsciiRenderer {
-    fn size(&mut self, glyph: Glyph) -> Area {
+    fn size(&mut self, glyph: Glyph, _: u32) -> Area {
         match glyph {
             Glyph::Digit { .. } | Glyph::Point | Glyph::Variable { .. } | Glyph::Add | Glyph::Subtract | Glyph::Multiply | Glyph::Divide => Area::square(1),
 
@@ -54,7 +54,7 @@ impl Renderer for AsciiRenderer {
                     if left_clip > 0 {
                         viewport_glyph.glyph = Glyph::Fraction {
                             inner_width: inner_width - left_clip
-                        }.to_sized(self);
+                        }.to_sized(self, viewport_glyph.glyph.size_reduction_level);
                         viewport_glyph.point.x = 0;
 
                         preserve_this_glyph = true;
@@ -67,7 +67,7 @@ impl Renderer for AsciiRenderer {
                     if right_clip > 0 {
                         viewport_glyph.glyph = Glyph::Fraction {
                             inner_width: inner_width - right_clip
-                        }.to_sized(self);
+                        }.to_sized(self, viewport_glyph.glyph.size_reduction_level);
 
                         preserve_this_glyph = true;
                     }

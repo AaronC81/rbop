@@ -181,8 +181,8 @@ impl From<Token> for Glyph {
 }
 
 impl Glyph {
-    pub fn to_sized(self, renderer: &mut impl Renderer) -> SizedGlyph {
-        SizedGlyph::from_glyph(self, renderer)
+    pub fn to_sized(self, renderer: &mut impl Renderer, size_reduction_level: u32) -> SizedGlyph {
+        SizedGlyph::from_glyph(self, renderer, size_reduction_level)
     }
 }
 
@@ -190,13 +190,15 @@ impl Glyph {
 pub struct SizedGlyph {
     pub glyph: Glyph,
     pub area: Area,
+    pub size_reduction_level: u32,
 }
 
 impl SizedGlyph {
-    pub fn from_glyph(glyph: Glyph, renderer: &mut impl Renderer) -> Self {
+    pub fn from_glyph(glyph: Glyph, renderer: &mut impl Renderer, size_reduction_level: u32) -> Self {
         SizedGlyph {
             glyph,
-            area: renderer.size(glyph),
+            area: renderer.size(glyph, size_reduction_level),
+            size_reduction_level,
         }
     }
 }
@@ -278,8 +280,8 @@ impl LayoutBlock {
 
     /// Creates a new layout block with one glyph at the origin. The baseline is the centre of this
     /// glyph.
-    pub fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph) -> LayoutBlock {
-        let glyph = glyph.to_sized(renderer);
+    pub fn from_glyph(renderer: &mut impl Renderer, glyph: Glyph, properties: LayoutComputationProperties) -> LayoutBlock {
+        let glyph = glyph.to_sized(renderer, properties.size_reduction_level);
         LayoutBlock {
             glyphs: vec![(glyph, CalculatedPoint { x: 0, y: 0 })],
             baseline: glyph.area.height / 2,
@@ -483,16 +485,35 @@ impl LayoutBlock {
     } 
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct LayoutComputationProperties {
+    pub size_reduction_level: u32
+}
+
+impl Default for LayoutComputationProperties {
+    fn default() -> Self {
+        LayoutComputationProperties {
+            size_reduction_level: 0,
+        }
+    }
+}
+
+impl LayoutComputationProperties {
+    pub fn reduce_size(self) -> Self {
+        Self { size_reduction_level: self.size_reduction_level + 1, ..self }
+    }
+}
+
 pub trait Layoutable {
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock;
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock;
 }
 
 pub trait Renderer {
     /// Given a glyph, returns the size that it will be drawn at. This is used to calculate the
     /// layout of the nodes before they are drawn.
-    fn size(&mut self, glyph: Glyph) -> Area;
+    fn size(&mut self, glyph: Glyph, size_reduction_level: u32) -> Area;
 
     /// Prepare a draw surface of the given size.
     fn init(&mut self, size: Area);
@@ -502,13 +523,13 @@ pub trait Renderer {
 
     /// Computes the layout for a node tree, converting it into a set of glyphs at particular 
     /// locations.
-    fn layout(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>) -> LayoutBlock where Self: Sized {
-        root.layout(self, path)
+    fn layout(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock where Self: Sized {
+        root.layout(self, path, properties)
     }
 
     /// Initialises the graphics surface and draws a node tree onto it.
     fn draw_all(&mut self, root: &impl Layoutable, path: Option<&mut NavPathNavigator>, viewport: Option<&Viewport>) -> LayoutBlock where Self: Sized {
-        let layout = self.layout(root, path); 
+        let layout = self.layout(root, path, LayoutComputationProperties::default()); 
         self.draw_all_by_layout(&layout, viewport);
         layout
     }
@@ -532,7 +553,7 @@ pub trait Renderer {
 
     /// Returns the visibility of the cursor when rendering a set of nodes in a viewport.
     fn cursor_visibility(&mut self, root: &impl Layoutable, path: &mut NavPathNavigator, viewport: Option<&Viewport>) -> ViewportVisibility where Self: Sized {
-        let layout = self.layout(root, Some(path)); 
+        let layout = self.layout(root, Some(path), LayoutComputationProperties::default()); 
         let viewport_glyphs = layout.for_viewport(viewport);
 
         for glyph in viewport_glyphs {

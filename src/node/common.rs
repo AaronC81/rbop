@@ -1,8 +1,8 @@
 use core::cmp::max;
 
-use crate::{nav::NavPathNavigator, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer}};
+use crate::{nav::NavPathNavigator, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, LayoutComputationProperties}};
 
-pub fn layout_sqrt<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+pub fn layout_sqrt<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
 {
     // Lay out the inner item first
@@ -16,13 +16,13 @@ where T : Layoutable
         None
     };
     
-    let inner_layout = inner.layout(renderer, (&mut path).as_mut());
+    let inner_layout = inner.layout(renderer, (&mut path).as_mut(), properties);
     let inner_area = inner_layout.area;
 
     // Get glyph size for the sqrt symbol
     let sqrt_symbol_layout = LayoutBlock::from_glyph(renderer, Glyph::Sqrt {
         inner_area
-    });
+    }, properties);
 
     // We assume that the inner layout goes in the very bottom right, so work out the
     // offset required based on the difference of the two areas
@@ -36,7 +36,7 @@ where T : Layoutable
     )
 }
 
-pub fn layout_fraction<T>(top: &T, bottom: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+pub fn layout_fraction<T>(top: &T, bottom: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
 {
     let (mut top_path, mut bottom_path) = {
@@ -55,11 +55,13 @@ where T : Layoutable
 
     let top_layout = top.layout(
         renderer,
-        (&mut top_path).as_mut()
+        (&mut top_path).as_mut(),
+        properties,
     );
     let bottom_layout = bottom.layout(
         renderer,
-        (&mut bottom_path).as_mut()
+        (&mut bottom_path).as_mut(),
+        properties,
     );
 
     // The fraction line should be the widest of the two
@@ -69,7 +71,7 @@ where T : Layoutable
     );
     let line_layout = LayoutBlock::from_glyph(renderer, Glyph::Fraction {
         inner_width: line_width
-    }).move_below_other(&top_layout);
+    }, properties).move_below_other(&top_layout);
 
     let bottom_layout = bottom_layout
         .move_below_other(&line_layout);
@@ -79,7 +81,7 @@ where T : Layoutable
         .merge_along_vertical_centre(&bottom_layout, MergeBaseline::SelfAsBaseline)
 }
 
-pub fn layout_parentheses<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+pub fn layout_parentheses<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
 {
     // Lay out the inner item first
@@ -93,16 +95,16 @@ where T : Layoutable
         None
     };
     
-    let inner_layout = inner.layout(renderer, (&mut path).as_mut());
+    let inner_layout = inner.layout(renderer, (&mut path).as_mut(), properties);
     let inner_area = inner_layout.area;
 
     // Get glyphs for parentheses
     let mut left_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::LeftParenthesis {
         inner_height: inner_area.height,
-    });
+    }, properties);
     let mut right_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::RightParenthesis {
         inner_height: inner_area.height,
-    });
+    }, properties);
 
     // Match the baselines for these glyphs with the inner baseline
     left_paren_layout.baseline = inner_layout.baseline;
@@ -116,7 +118,7 @@ where T : Layoutable
     ])
 }
 
-pub fn layout_power<T>(base: Option<&T>, exp: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock
+pub fn layout_power<T>(base: Option<&T>, exp: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
 {
     // If the base isn't known, generate a layout with some specials and let the layout engine
@@ -132,7 +134,10 @@ where T : Layoutable
             None
         };
         
-        let mut exp_layout = exp.layout(renderer, (&mut path).as_mut());
+        let mut exp_layout = exp.layout(
+            renderer, (&mut path).as_mut(),
+            properties.reduce_size(),
+        );
 
         // Ask this to be rendered as superscript
         exp_layout.special.baseline_merge_with_high_precedence = true;
@@ -146,11 +151,13 @@ where T : Layoutable
     // pass no path)
     let base_layout = base.unwrap().layout(
         renderer,
-        None
+        None,
+        properties,
     );
     let exp_layout = exp.layout(
         renderer,
-        None
+        None,
+        properties.reduce_size(),
     );
 
     // We're going to merge with `merge_in_place`, and want this:

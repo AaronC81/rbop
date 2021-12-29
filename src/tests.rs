@@ -3,7 +3,7 @@ use core::str::FromStr;
 
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
-use crate::render::{Area, CalculatedPoint, Layoutable, Viewport};
+use crate::render::{Area, CalculatedPoint, Layoutable, Viewport, LayoutComputationProperties, Glyph};
 use crate::{Number, UnstructuredItem, UnstructuredNodeList, decimal_ext};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
@@ -1174,7 +1174,7 @@ fn bench_unstructured_layout(b: &mut Bencher) {
     let mut ascii_renderer = AsciiRenderer::default();
 
     b.iter(|| {
-        black_box(tree.layout(&mut ascii_renderer, None));
+        black_box(tree.layout(&mut ascii_renderer, None, LayoutComputationProperties::default()));
     });
 }
 
@@ -1196,4 +1196,23 @@ fn test_divide_by_zero() {
         box StructuredNode::Number(dec!(0.1)),
     ).disambiguate().unwrap().evaluate();
     assert_matches!(result, Err(_));
+}
+
+#[test]
+fn test_size_reduction_level() {
+    let block = UnstructuredNodeRoot { root: uns_list!(
+        token!(1),
+        token!(+),
+        token!(2),
+        UnstructuredNode::Power(tokens!(3)),
+    ) }.upgrade().unwrap().layout(&mut AsciiRenderer::default(), None, LayoutComputationProperties::default());
+
+    // The "3" token should have a size reduction level of 1, all others should have 0
+    for (glyph, _) in block.glyphs {
+        if let Glyph::Digit { number: 3 } = glyph.glyph {
+            assert_eq!(glyph.size_reduction_level, 1);
+        } else {
+            assert_eq!(glyph.size_reduction_level, 0);
+        }
+    }
 }

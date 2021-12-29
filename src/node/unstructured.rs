@@ -2,7 +2,7 @@ use core::{cmp::max, convert::TryFrom};
 
 use alloc::{vec::Vec, vec, boxed::Box};
 use rust_decimal::Decimal;
-use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, Viewport, ViewportVisibility}};
+use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties}};
 use super::{common, parser, structured::StructuredNode};
 
 #[derive(Clone)]
@@ -438,31 +438,31 @@ impl Upgradable for UnstructuredNode {
 }
 
 impl Layoutable for UnstructuredNodeRoot {
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
-        self.root.layout(renderer, path)
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock {
+        self.root.layout(renderer, path, properties)
     }
 }
 
 impl Layoutable for UnstructuredNode {
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> crate::render::LayoutBlock {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> crate::render::LayoutBlock {
         match self {
             UnstructuredNode::Token(token)
-                => LayoutBlock::from_glyph(renderer, (*token).into()),
+                => LayoutBlock::from_glyph(renderer, (*token).into(), properties),
 
             UnstructuredNode::Sqrt(inner)
-                => common::layout_sqrt(inner, renderer, path),
+                => common::layout_sqrt(inner, renderer, path, properties),
             UnstructuredNode::Fraction(top, bottom)
-                => common::layout_fraction(top, bottom, renderer, path),
+                => common::layout_fraction(top, bottom, renderer, path, properties),
             UnstructuredNode::Parentheses(inner)
-                => common::layout_parentheses(inner, renderer, path),
+                => common::layout_parentheses(inner, renderer, path, properties),
             UnstructuredNode::Power(exp)
-                => common::layout_power(None, exp, renderer, path),
+                => common::layout_power(None, exp, renderer, path, properties),
         }
     }
 }
 
 impl Layoutable for UnstructuredNodeList {
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> LayoutBlock {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock {
         let children = &self.items;
 
         // We never actually mutate the paths...
@@ -500,7 +500,8 @@ impl Layoutable for UnstructuredNodeList {
             .enumerate()
             .map(|(i, node)| node.layout(
                 renderer,
-                (&mut paths[i]).as_mut()
+                (&mut paths[i]).as_mut(),
+                properties,
             ))
             .collect::<Vec<_>>();
 
@@ -512,7 +513,7 @@ impl Layoutable for UnstructuredNodeList {
                 // Our default size will be that of the digit 0
                 temp_layout = Some(LayoutBlock::from_glyph(renderer, Glyph::Digit {
                     number: 0
-                }));
+                }, properties));
                 &temp_layout.as_ref().unwrap()
             } else if idx == 0 {
                 &layouts[idx]
@@ -534,7 +535,7 @@ impl Layoutable for UnstructuredNodeList {
             // Hackily match the baseline
             let mut cursor_layout = LayoutBlock::from_glyph(renderer, Glyph::Cursor {
                 height: cursor_height,
-            });
+            }, properties);
             cursor_layout.baseline = cursor_baseline;
 
             layouts.insert(idx, cursor_layout)
@@ -543,7 +544,7 @@ impl Layoutable for UnstructuredNodeList {
         // If the list is still empty (i.e. this list was empty anyway, and the cursor's not in it)
         // then insert a placeholder
         if layouts.is_empty() {
-            layouts.push(LayoutBlock::from_glyph(renderer, Glyph::Placeholder))
+            layouts.push(LayoutBlock::from_glyph(renderer, Glyph::Placeholder, properties))
         }
 
         LayoutBlock::layout_horizontal(&layouts[..])
@@ -552,10 +553,10 @@ impl Layoutable for UnstructuredNodeList {
 }
 
 impl<'a> Layoutable for UnstructuredItem<'a> {
-    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>) -> crate::render::LayoutBlock {
+    fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> crate::render::LayoutBlock {
         match self {
-            UnstructuredItem::Node(node) => node.layout(renderer, path),
-            UnstructuredItem::List(children) => children.layout(renderer, path),
+            UnstructuredItem::Node(node) => node.layout(renderer, path, properties),
+            UnstructuredItem::List(children) => children.layout(renderer, path, properties),
         }
     }
 }

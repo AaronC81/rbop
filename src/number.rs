@@ -1,10 +1,10 @@
 use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
-use alloc::{vec, vec::Vec, boxed::Box};
+use alloc::{vec, vec::Vec};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use rust_decimal::Decimal;
 
-use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::{Error, MathsError}};
+use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::MathsError};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {

@@ -8,13 +8,12 @@
 // (The ways that rbop and Poincaré do things are actually quite similar, so this would've been a
 // handy page to find earlier!)
 
-use core::{cmp::Ordering, mem::{self, Discriminant}};
+use core::{cmp::Ordering, mem};
 
-use alloc::{boxed::Box, format, vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use num_traits::{One, Zero};
-use rust_decimal::Decimal;
 
-use crate::{Number, error::{Error, MathsError}, decimal_ext::DecimalExtensions};
+use crate::{Number, error::MathsError, decimal_ext::DecimalExtensions};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which
@@ -486,10 +485,6 @@ impl SimplifiedNode {
         } else {
             None
         }
-    }
-
-    fn is_leaf(&self) -> bool {
-        matches!(self, Self::Number(_) | Self::Variable(_))
     }
 }
 

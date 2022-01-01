@@ -1,4 +1,4 @@
-use alloc::{string::String, fmt, vec, vec::Vec};
+use alloc::{fmt, vec, vec::Vec};
 
 use crate::node::unstructured::Serializable;
 

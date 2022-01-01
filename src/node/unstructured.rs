@@ -1,8 +1,5 @@
-use core::{cmp::max, convert::TryFrom};
-
-use alloc::{vec::Vec, vec, boxed::Box};
-use rust_decimal::Decimal;
-use crate::{error::{Error, NodeError}, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties}};
+use alloc::{vec::Vec, vec};
+use crate::{error::NodeError, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties}};
 use super::{common, parser, structured::StructuredNode};
 
 #[derive(Clone)]
@@ -429,7 +426,7 @@ impl Upgradable for UnstructuredNode {
                 => Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)),
 
             // Parser should always handle this
-            UnstructuredNode::Power(e)
+            UnstructuredNode::Power(_)
                 => Err(NodeError::PowerMissingBase),
 
             UnstructuredNode::Token(_) => Err(NodeError::CannotUpgradeToken),
@@ -508,7 +505,7 @@ impl Layoutable for UnstructuredNodeList {
         // If the cursor is here, insert it
         if let Some(idx) = cursor_insertion_index {
             // Get the layout to match the size to
-            let mut temp_layout = None;
+            let temp_layout;
             let cursor_match_layout = if layouts.is_empty() {
                 // Our default size will be that of the digit 0
                 temp_layout = Some(LayoutBlock::from_glyph(renderer, Glyph::Digit {

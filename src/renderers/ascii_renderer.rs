@@ -1,4 +1,4 @@
-use crate::render::{Area, CalculatedPoint, Glyph, Renderer, ViewportGlyph, ViewportPoint, ViewportVisibility};
+use crate::render::{Area, Glyph, Renderer, ViewportGlyph, ViewportPoint, ViewportVisibility};
 use alloc::{vec::Vec, string::{String, ToString}};
 
 #[derive(Default, Clone, Debug)]

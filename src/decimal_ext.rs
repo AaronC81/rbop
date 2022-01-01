@@ -1,6 +1,4 @@
-use core::str::FromStr;
-
-use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
+use num_traits::{One, Zero};
 use rust_decimal::Decimal;
 
 /// This trait, and its implementation on `Decimal`, exist to add extra methods to `Decimal`.
@@ -31,7 +29,6 @@ impl DecimalExtensions for Decimal {
     }
 
     fn powd(&self, exp: Decimal) -> Decimal {
-        let (_, self_lo, self_mid, self_hi) = self.to_parts();
         let (_, exp_lo,  exp_mid,  exp_hi ) = exp.to_parts();
 
         if exp.is_zero() {

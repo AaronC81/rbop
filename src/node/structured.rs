@@ -1,20 +1,16 @@
-use core::alloc::Layout;
-use core::cmp::{Ordering, max};
-use core::mem::{self, Discriminant};
 use core::ops::Deref;
-use core::str::FromStr;
 
 use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::{vec, vec::Vec};
-use num_traits::{FromPrimitive, One, Zero};
-use rust_decimal::{Decimal};
+use num_traits::{FromPrimitive, Zero};
+use rust_decimal::Decimal;
 
 use crate::Number;
-use crate::error::{Error, MathsError};
+use crate::error::MathsError;
 use crate::node::common;
 use crate::decimal_ext::DecimalExtensions;
-use crate::render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, LayoutComputationProperties};
+use crate::render::{Glyph, LayoutBlock, Layoutable, Renderer, LayoutComputationProperties};
 use crate::nav::NavPathNavigator;
 
 use super::simplified::{Simplifiable, SimplifiedNode};
@@ -96,7 +92,7 @@ impl StructuredNode {
     pub fn evaluate(&self) -> Result<Number, MathsError> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
-            StructuredNode::Variable(c) => Err(MathsError::MissingVariable),
+            StructuredNode::Variable(_) => Err(MathsError::MissingVariable),
             StructuredNode::Sqrt(inner) =>
                 inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(MathsError::InvalidSqrt),
             StructuredNode::Power(b, e) =>

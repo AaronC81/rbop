@@ -4,12 +4,11 @@ use core::str::FromStr;
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport, LayoutComputationProperties, Glyph};
-use crate::{Number, UnstructuredItem, UnstructuredNodeList, decimal_ext};
+use crate::{Number, UnstructuredNodeList};
 use crate::nav::NavPath;
 use crate::{StructuredNode, UnstructuredNode, Token, render::Renderer};
 use crate::renderers::AsciiRenderer;
-use alloc::string::{String, ToString};
-use alloc::{vec, vec::Vec};
+use alloc::vec;
 use rust_decimal::Decimal;
 use test::{Bencher, black_box};
 
@@ -54,10 +53,6 @@ macro_rules! rat {
 
 macro_rules! dec {
     ($l:literal) => { Number::Decimal(Decimal::from_str(stringify!($l)).unwrap()) };
-}
-
-macro_rules! raw_dec {
-    ($l:literal) => { Decimal::from_str(stringify!($l)).unwrap() };
 }
 
 macro_rules! reserialize {

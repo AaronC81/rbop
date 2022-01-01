@@ -1,9 +1,7 @@
-use core::cmp::max;
-use alloc::{vec::Vec, vec, string::ToString};
-use crate::{StructuredNode, Token};
+use alloc::{vec::Vec, vec};
+use crate::Token;
 
 use crate::nav::NavPathNavigator;
-use crate::node;
 
 pub type Dimension = u64;
 

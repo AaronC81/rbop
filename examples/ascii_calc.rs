@@ -6,7 +6,6 @@
 
 #![feature(box_syntax)]
 #![feature(backtrace)]
-#![feature(const_panic)]
 
 // Enforce `examples` feature is passed ------------------------------------------------------------
 #[cfg(not(feature = "examples"))]

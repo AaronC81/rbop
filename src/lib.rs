@@ -1,6 +1,5 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
-#![feature(or_patterns)]
 #![feature(test)]
 #![feature(core_intrinsics)]
 #![feature(if_let_guard)]

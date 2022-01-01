@@ -1,6 +1,6 @@
 use alloc::{vec, vec::Vec};
 
-use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputationProperties}, node::unstructured::Navigable};
+use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputationProperties}};
 
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
@@ -114,11 +114,11 @@ pub fn match_vertical_cursor_points(
     // Is it safe to use the default LayoutComputationProperties here...?
     // _Probably_. I would imagine that any size reduction done by the renderer will be somewhat
     // linear, so this should give equivalent results even if the node as actually drawn is smaller.
-    let mut from_layouts = from_node.items
+    let from_layouts = from_node.items
         .iter()
         .map(|node| node.layout(renderer, None, LayoutComputationProperties::default()))
         .collect::<Vec<_>>();
-    let mut to_layouts = to_node.items
+    let to_layouts = to_node.items
         .iter()
         .map(|node| node.layout(renderer, None, LayoutComputationProperties::default()))
         .collect::<Vec<_>>();

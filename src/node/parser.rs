@@ -1,8 +1,8 @@
-use alloc::{boxed::Box, string::ToString, vec};
+use alloc::string::ToString;
 use num_traits::Zero;
 use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}};
 
-use crate::{Number, error::{Error, NodeError}};
+use crate::{Number, error::NodeError};
 
 use super::{structured::StructuredNode, unstructured::{Token, UnstructuredNode, Upgradable}};
 

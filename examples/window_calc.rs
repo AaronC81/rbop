@@ -112,11 +112,11 @@ mod window_calc {
                 rbop::render::Glyph::Placeholder => self.text_size("X", size_reduction_level),
 
                 // TODO: not everything's implemented
-                rbop::render::Glyph::LeftParenthesis { inner_height } => todo!(),
-                rbop::render::Glyph::RightParenthesis { inner_height } => todo!(),
-                rbop::render::Glyph::Sqrt { inner_area } => todo!(),
+                rbop::render::Glyph::LeftParenthesis { .. } => todo!(),
+                rbop::render::Glyph::RightParenthesis { .. } => todo!(),
+                rbop::render::Glyph::Sqrt { .. } => todo!(),
                 rbop::render::Glyph::Point => todo!(),
-                rbop::render::Glyph::Variable { name } => todo!(),
+                rbop::render::Glyph::Variable { .. } => todo!(),
             }
         }
 
@@ -164,11 +164,11 @@ mod window_calc {
                 rbop::render::Glyph::Placeholder => self.text_draw("?", point, size_reduction_level),
 
                 // TODO: not everything's implemented
-                rbop::render::Glyph::LeftParenthesis { inner_height } => todo!(),
-                rbop::render::Glyph::RightParenthesis { inner_height } => todo!(),
-                rbop::render::Glyph::Sqrt { inner_area } => todo!(),    
+                rbop::render::Glyph::LeftParenthesis { .. } => todo!(),
+                rbop::render::Glyph::RightParenthesis { .. } => todo!(),
+                rbop::render::Glyph::Sqrt { .. } => todo!(),    
                 rbop::render::Glyph::Point => todo!(),
-                rbop::render::Glyph::Variable { name } => todo!(),
+                rbop::render::Glyph::Variable { .. } => todo!(),
             }
         }
     }
@@ -241,7 +241,7 @@ mod window_calc {
             helper.request_redraw();
         }
 
-        fn on_key_down(&mut self, helper: &mut WindowHelper<()>, virtual_key_code: Option<VirtualKeyCode>, scancode: speedy2d::window::KeyScancode) {
+        fn on_key_down(&mut self, _helper: &mut WindowHelper<()>, virtual_key_code: Option<VirtualKeyCode>, _scancode: speedy2d::window::KeyScancode) {
             // Create a new renderer - not bound to a particular graphics surface since it's only
             // used for its `size` method
             let mut renderer = self.create_renderer(None);

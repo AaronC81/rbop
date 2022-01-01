@@ -306,12 +306,12 @@ impl SimplifiedNode {
                     v,
                     |n|
                         if let SimplifiedNode::Power(node, box SimplifiedNode::Number(exp)) = n {
-                            (node.as_ref().clone(), *exp)
+                            Ok((node.as_ref().clone(), *exp))
                         } else {
-                            (n.clone(), Number::one())
+                            Ok((n.clone(), Number::one()))
                         },
                     |n, c|
-                        SimplifiedNode::Power(box n.clone(), box SimplifiedNode::Number(c))
+                        Ok(SimplifiedNode::Power(box n.clone(), box SimplifiedNode::Number(c)))
                 )? == PerformedReduction {
                     self.reduce()?;
                     return Ok(PerformedReduction)
@@ -361,16 +361,16 @@ impl SimplifiedNode {
                             if let Some(SimplifiedNode::Number(n)) = v.first() => {
                                 // Construct a new multiply out of the non-number nodes
                                 let mut result = SimplifiedNode::Multiply(v[1..].to_vec());
-                                result.reduce(); // TODO: Err ignored
-                                (result, *n)
+                                result.reduce()?;
+                                Ok((result, *n))
                             },
 
-                            _ => (n.clone(), Number::one())
+                            _ => Ok((n.clone(), Number::one()))
                         },
                     |n, c|
-                        SimplifiedNode::Multiply(vec![
+                        Ok(SimplifiedNode::Multiply(vec![
                             SimplifiedNode::Number(c), n
-                        ])
+                        ]))
                 )? == PerformedReduction {
                     self.reduce()?;
                     return Ok(PerformedReduction)
@@ -388,8 +388,8 @@ impl SimplifiedNode {
 
     fn combine_terms(
         vec: &mut Vec<SimplifiedNode>,
-        dissect: impl Fn(&SimplifiedNode) -> (SimplifiedNode, Number),
-        combine: impl Fn(SimplifiedNode, Number) -> SimplifiedNode,
+        dissect: impl Fn(&SimplifiedNode) -> Result<(SimplifiedNode, Number), MathsError>,
+        combine: impl Fn(SimplifiedNode, Number) -> Result<SimplifiedNode, MathsError>,
     ) -> ReductionResult
     {
         // It is assumed that the vec has items, bail if it doesn't
@@ -403,7 +403,7 @@ impl SimplifiedNode {
         // Dissect each item in the vec into its base node and term count
         let mut dissected = vec.iter()
             .map(|x| dissect(x))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Sort this list by the base nodes, so that equal ones will be adjacent
         dissected.sort_by(|(ln, _), (rn, _)| ln.cmp(rn));
@@ -420,7 +420,7 @@ impl SimplifiedNode {
             } else {
                 // Add the run onto the result vec
                 if run_length > 1 {
-                    result.push(combine(run_node, run_term_count));
+                    result.push(combine(run_node, run_term_count)?);
                     combined_any = true;
                 } else {
                     result.push(vec[i].clone());
@@ -435,7 +435,7 @@ impl SimplifiedNode {
 
         // Handle end of final run
         if run_length > 1 {
-            result.push(combine(run_node, run_term_count));
+            result.push(combine(run_node, run_term_count)?);
             combined_any = true;
         } else {
             result.push(vec.last().unwrap().clone());

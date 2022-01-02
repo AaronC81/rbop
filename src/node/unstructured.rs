@@ -1,5 +1,5 @@
 use alloc::{vec::Vec, vec};
-use crate::{error::NodeError, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties}};
+use crate::{error::NodeError, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties, CalculatedPoint}};
 use super::{common, parser, structured::StructuredNode};
 
 #[derive(Clone)]
@@ -331,6 +331,16 @@ impl UnstructuredNodeRoot {
         }
 
         self.ensure_cursor_visible(path, renderer, viewport.as_mut().map(|x| x as _));
+    }
+
+    /// Clears the entire node structure, resetting the viewport and cursor.
+    pub fn clear(&mut self, path: &mut NavPath, _renderer: &mut impl Renderer, mut viewport: Option<&mut Viewport>) {
+        // Delete everything!
+        self.root.items = vec![];
+
+        // Reset cursor and viewport
+        *path = NavPath::new(vec![0]);
+        viewport.as_mut().map(|x| x.offset = CalculatedPoint { x: 0, y: 0 });
     }
 
 

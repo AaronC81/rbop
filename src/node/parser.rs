@@ -1,6 +1,6 @@
 use alloc::string::ToString;
 use num_traits::Zero;
-use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}};
+use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}, MathematicalOps};
 
 use crate::{Number, error::NodeError};
 
@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
 
             while !self.eoi() {
                 if let Some(Token::Digit(d)) = self.current_token() {
-                    number *= Decimal::from(10);
+                    number *= Decimal::from(10u8);
                     number += Decimal::from(d);
 
                     self.advance();
@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
                                 leading_zeros_count += 1;
                             } else {
                                 collect_leading_zeros = false;
-                                dec_part *= Decimal::from(10);
+                                dec_part *= Decimal::from(10u8);
                                 dec_part += Decimal::from(d);
                             }
         
@@ -186,7 +186,7 @@ impl<'a> Parser<'a> {
                             dec_part.to_string().len()
                             + leading_zeros_count;
                         // 2. Multiply whole part by 10^length, = "12300."
-                        number *= Decimal::from_u8(10).unwrap().powi(length_of_decimal_part as u64);
+                        number *= Decimal::from_u8(10).unwrap().powi(length_of_decimal_part as i64);
                         // 3. Add decimal part, = "12345."
                         number += dec_part;
                         // 4. Shift point by length of decimal part, = "123.45"

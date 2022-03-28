@@ -12,8 +12,9 @@ use core::{cmp::Ordering, mem};
 
 use alloc::{boxed::Box, vec, vec::Vec};
 use num_traits::{One, Zero};
+use rust_decimal::MathematicalOps;
 
-use crate::{Number, error::MathsError, decimal_ext::DecimalExtensions};
+use crate::{Number, error::MathsError};
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which

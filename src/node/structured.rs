@@ -4,12 +4,11 @@ use alloc::boxed::Box;
 use alloc::string::ToString;
 use alloc::{vec, vec::Vec};
 use num_traits::{FromPrimitive, Zero};
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::Number;
 use crate::error::MathsError;
 use crate::node::common;
-use crate::decimal_ext::DecimalExtensions;
 use crate::render::{Glyph, LayoutBlock, Layoutable, Renderer, LayoutComputationProperties};
 use crate::nav::NavPathNavigator;
 

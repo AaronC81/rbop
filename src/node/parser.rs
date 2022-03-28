@@ -128,8 +128,8 @@ impl<'a> Parser<'a> {
 
             while !self.eoi() {
                 if let Some(Token::Digit(d)) = self.current_token() {
-                    number *= Decimal::from(10u8);
-                    number += Decimal::from(d);
+                    number = number.checked_mul(Decimal::from(10u8)).ok_or(NodeError::Overflow)?;
+                    number = number.checked_add(Decimal::from(d)).ok_or(NodeError::Overflow)?;
 
                     self.advance();
                 } else {
@@ -199,7 +199,12 @@ impl<'a> Parser<'a> {
                 if is_decimal {
                     Number::Decimal(number)
                 } else {
-                    Number::Rational(number.to_i64().unwrap(), 1)
+                    // Handle case where number doesn't fit in i64
+                    if let Some(numerator) = number.to_i64() {
+                        Number::Rational(numerator, 1)
+                    } else {
+                        Number::Decimal(number)
+                    }
                 }
             ))?
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {

@@ -10,6 +10,7 @@ pub enum NodeError {
     PowerMissingBase,
     ExpectedUnit,
     CannotUpgradeToken,
+    Overflow,
 }
 
 impl fmt::Display for NodeError {
@@ -19,6 +20,7 @@ impl fmt::Display for NodeError {
             NodeError::PowerMissingBase => "no base given for power",
             NodeError::ExpectedUnit => "syntax error",
             NodeError::CannotUpgradeToken => "internal syntax error",
+            NodeError::Overflow => "numeric overflow",
         })
     }
 }
@@ -31,6 +33,7 @@ impl Serializable for NodeError {
             NodeError::PowerMissingBase => 2,
             NodeError::ExpectedUnit => 3,
             NodeError::CannotUpgradeToken => 4,
+            NodeError::Overflow => 5,
         }]
     }
 
@@ -40,6 +43,7 @@ impl Serializable for NodeError {
             2 => NodeError::PowerMissingBase,
             3 => NodeError::ExpectedUnit,
             4 => NodeError::CannotUpgradeToken,
+            5 => NodeError::Overflow,
 
             _ => return None,
         })

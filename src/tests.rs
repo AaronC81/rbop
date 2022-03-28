@@ -1,6 +1,7 @@
 use core::assert_matches::assert_matches;
 use core::str::FromStr;
 
+use crate::error::NodeError;
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport, LayoutComputationProperties, Glyph};
@@ -194,6 +195,12 @@ fn test_decimals() {
         tokens!(0 . 3 - 0 . 1).upgrade().unwrap().evaluate().unwrap(),
         dec!(0.2)
     );
+
+    // Very large shouldn't panic
+    assert!(matches!(
+        tokens!(1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5).upgrade(),
+        Err(NodeError::Overflow),
+    ));
 
     // Check we accept the "3." form, and that it becomes a decimal rather than a rational
     assert_eq!(

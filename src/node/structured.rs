@@ -95,11 +95,14 @@ impl StructuredNode {
             StructuredNode::Sqrt(inner) =>
                 inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(MathsError::InvalidSqrt),
             StructuredNode::Power(b, e) =>
-                Ok(b.evaluate()?.to_decimal().powd(e.evaluate()?.to_decimal()).into()),
-            StructuredNode::Add(a, b) => Ok(a.evaluate()? + b.evaluate()?),
-            StructuredNode::Subtract(a, b) => Ok(a.evaluate()? - b.evaluate()?),
-            StructuredNode::Multiply(a, b) => Ok(a.evaluate()? * b.evaluate()?),
-            StructuredNode::Divide(a, b) => Ok(a.evaluate()?.checked_div(b.evaluate()?)?),
+                b.evaluate()?.to_decimal().checked_powd(e.evaluate()?.to_decimal())
+                    .ok_or(MathsError::Overflow)
+                    .map(|d| d.into()),
+            StructuredNode::Add(a, b) =>
+                a.evaluate()?.checked_add(b.evaluate()?),
+            StructuredNode::Subtract(a, b) => a.evaluate()?.checked_sub(b.evaluate()?),
+            StructuredNode::Multiply(a, b) => a.evaluate()?.checked_mul(b.evaluate()?),
+            StructuredNode::Divide(a, b) => a.evaluate()?.checked_div(b.evaluate()?),
             StructuredNode::Parentheses(inner) => inner.evaluate(),
         }
     }

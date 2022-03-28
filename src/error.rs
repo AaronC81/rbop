@@ -52,6 +52,7 @@ pub enum MathsError {
     DivisionByZero,
     InvalidSqrt,
     MissingVariable,
+    Overflow,
 }
 
 impl fmt::Display for MathsError {
@@ -60,6 +61,7 @@ impl fmt::Display for MathsError {
             MathsError::DivisionByZero => "division by zero",
             MathsError::InvalidSqrt => "invalid square root",
             MathsError::MissingVariable => "cannot evaluate variable",
+            MathsError::Overflow => "numeric overflow",
         })
     }
 }
@@ -71,6 +73,7 @@ impl Serializable for MathsError {
             MathsError::DivisionByZero => 1,
             MathsError::InvalidSqrt => 2,
             MathsError::MissingVariable => 3,
+            MathsError::Overflow => 4,
         }]
     }
 
@@ -79,6 +82,7 @@ impl Serializable for MathsError {
             1 => MathsError::DivisionByZero,
             2 => MathsError::InvalidSqrt,
             3 => MathsError::MissingVariable,
+            4 => MathsError::Overflow,
 
             _ => return None,
         })

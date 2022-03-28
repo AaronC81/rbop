@@ -133,6 +133,41 @@ impl Number {
         }
     }
 
+    /// Adds this number to another number, or returns an error if an overflow occurs.
+    pub fn checked_add(&self, other: Number) -> Result<Number, MathsError> {
+        if let (l@Self::Rational(_, _), r@Self::Rational(_, _)) = (self, other) {
+            let (l, r) = l.to_common_with(r);
+
+            Ok(Number::Rational(
+                l.numerator().checked_add(r.numerator()).ok_or(MathsError::Overflow)?,
+                l.denominator(),
+            ).simplify())
+        } else {
+            Ok(Number::Decimal(
+                self.to_decimal().checked_add(other.to_decimal()).ok_or(MathsError::Overflow)?,
+            ))
+        }
+    }
+
+    /// Subtracts one number from another number, or returns an error if an overflow occurs.
+    pub fn checked_sub(&self, other: Number) -> Result<Number, MathsError> {
+        self.checked_add(-other)
+    }
+
+    /// Multiplies this number with another number, or returns an error if an overflow occurs.
+    pub fn checked_mul(&self, other: Number) -> Result<Number, MathsError> {
+        if let (Self::Rational(ln, ld), Self::Rational(rn, rd)) = (self, other) {
+            Ok(Number::Rational(
+                ln.checked_mul(rn).ok_or(MathsError::Overflow)?,
+                ld.checked_mul(rd).ok_or(MathsError::Overflow)?,
+            ).simplify())
+        } else {
+            Ok(Number::Decimal(
+                self.to_decimal().checked_mul(other.to_decimal()).ok_or(MathsError::Overflow)?,
+            ).simplify())
+        }
+    }
+
     /// Divides this number by another number, or returns an error if the divisor is zero.
     pub fn checked_div(&self, other: Number) -> Result<Number, MathsError> {
         if other.is_zero() {
@@ -140,7 +175,7 @@ impl Number {
         } else {
             Ok(*self / other)
         }
-    }
+    }    
 }
 
 impl PartialOrd for Number {
@@ -182,13 +217,7 @@ impl Add for Number {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        if let (l@Self::Rational(_, _), r@Self::Rational(_, _)) = (self, rhs) {
-            let (l, r) = l.to_common_with(r);
-
-            Number::Rational(l.numerator() + r.numerator(), l.denominator()).simplify()
-        } else {
-            Number::Decimal(self.to_decimal() + rhs.to_decimal())
-        }
+        self.checked_add(rhs).unwrap()
     }
 }
 
@@ -212,11 +241,7 @@ impl Mul for Number {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        if let (Self::Rational(ln, ld), Self::Rational(rn, rd)) = (self, rhs) {
-            Number::Rational(ln * rn, ld * rd).simplify()
-        } else {
-            Number::Decimal(self.to_decimal() * rhs.to_decimal()).simplify()
-        }
+        self.checked_mul(rhs).unwrap()
     }
 }
 

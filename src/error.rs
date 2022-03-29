@@ -57,6 +57,7 @@ pub enum MathsError {
     InvalidSqrt,
     MissingVariable,
     Overflow,
+    Imaginary,
 }
 
 impl fmt::Display for MathsError {
@@ -66,6 +67,7 @@ impl fmt::Display for MathsError {
             MathsError::InvalidSqrt => "invalid square root",
             MathsError::MissingVariable => "cannot evaluate variable",
             MathsError::Overflow => "numeric overflow",
+            MathsError::Imaginary => "imaginary",
         })
     }
 }
@@ -78,6 +80,7 @@ impl Serializable for MathsError {
             MathsError::InvalidSqrt => 2,
             MathsError::MissingVariable => 3,
             MathsError::Overflow => 4,
+            MathsError::Imaginary => 5,
         }]
     }
 
@@ -87,6 +90,7 @@ impl Serializable for MathsError {
             2 => MathsError::InvalidSqrt,
             3 => MathsError::MissingVariable,
             4 => MathsError::Overflow,
+            5 => MathsError::Imaginary,
 
             _ => return None,
         })

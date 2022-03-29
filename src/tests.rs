@@ -815,7 +815,7 @@ fn test_power() {
             token!(2),
             UnstructuredNode::Power(tokens!(3))
         ).upgrade().unwrap().evaluate().unwrap(),
-        dec!(8),
+        rat!(8),
     );
 
     let tree = UnstructuredNodeRoot { root: uns_list!(
@@ -885,8 +885,67 @@ fn test_power() {
     );
     assert_eq!(
         tree.upgrade().unwrap().evaluate().unwrap(),
-        dec!(16777218)
-    )
+        rat!(16777218)
+    );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        token!(4),
+        UnstructuredNode::Power(uns_list!(UnstructuredNode::Fraction(tokens!(1), tokens!(2)))),
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            " 1",
+            " -",
+            " 2",
+            "4 ",
+        ],
+    );
+    assert_eq!(
+        tree.upgrade().unwrap().evaluate().unwrap(),
+        rat!(2)
+    );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        token!(8),
+        UnstructuredNode::Power(uns_list!(
+            token!(-),
+            UnstructuredNode::Fraction(tokens!(2), tokens!(3))
+        )),
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            "  2",
+            " --",
+            "  3",
+            "8  ",
+        ],
+    );
+    assert_eq!(
+        tree.upgrade().unwrap().evaluate().unwrap(),
+        rat!(1, 4)
+    );
+
+    let tree = UnstructuredNodeRoot { root: uns_list!(
+        token!(7),
+        UnstructuredNode::Power(uns_list!(
+            UnstructuredNode::Fraction(tokens!(1), tokens!(2))
+        )),
+    ) };
+    assert_eq!(
+        render!(tree),
+        vec![
+            " 1",
+            " -",
+            " 2",
+            "7 ",
+        ],
+    );
+    assert!(matches!(
+        tree.upgrade().unwrap().evaluate().unwrap(),
+        Number::Decimal(_),
+    ));
 }
 
 #[test]

@@ -1,8 +1,9 @@
 use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
 use alloc::{vec, vec::Vec};
+use num_integer::{Roots, Integer};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::MathsError};
 
@@ -175,7 +176,41 @@ impl Number {
         } else {
             Ok(*self / other)
         }
-    }    
+    }
+
+    /// Raises this number to the power of another number.
+    pub fn checked_pow(&self, power: Number) -> Result<Number, MathsError> {
+        // If both power and base are rational, we can get a bit more accuracy by breaking it down
+        if let (Self::Rational(bn, bd), Self::Rational(pn, pd)) = (self, power) {
+            // Can only keep as rational if (power denominator)th root of both base numerator and
+            // denominator are integers
+            if (bn.is_negative() && pd.is_even()) || (bd.is_negative() && pd.is_even()) {
+                return Err(MathsError::Imaginary)
+            }
+
+            // TODO: handle panics in `nth_root`
+            let bn_pd_nth_root = bn.nth_root(pd.try_into().map_err(|_| MathsError::Overflow)?);
+            let bd_pd_nth_root = bd.nth_root(pd.try_into().map_err(|_| MathsError::Overflow)?);
+            if bn_pd_nth_root.pow(pd.abs().try_into().map_err(|_| MathsError::Overflow)?) == *bn
+               && bd_pd_nth_root.pow(pd.abs().try_into().map_err(|_| MathsError::Overflow)?) == *bd {
+
+                let mut result = Number::Rational(
+                    bn_pd_nth_root.pow(pn.abs().try_into().map_err(|_| MathsError::Overflow)?), 
+                    bd_pd_nth_root.pow(pn.abs().try_into().map_err(|_| MathsError::Overflow)?), 
+                );
+
+                if pn < 0 {
+                    result = result.reciprocal();
+                }
+
+                return Ok(result)
+            }
+        }
+
+        Ok(Number::Decimal(
+            self.to_decimal().checked_powd(power.to_decimal()).ok_or(MathsError::Overflow)?
+        ))
+    }
 }
 
 impl PartialOrd for Number {

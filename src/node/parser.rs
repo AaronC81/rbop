@@ -137,10 +137,6 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            if parsed_number_is_negative {
-                number = -number;
-            }
-
             let mut is_decimal = false;
 
             // Is the next token a decimal point?
@@ -224,6 +220,14 @@ impl<'a> Parser<'a> {
         } else {
             return Err(NodeError::ExpectedUnit)
         };
+
+        if parsed_number_is_negative {
+            if let StructuredNode::Number(number) = &mut result {
+                *number *= Number::Rational(-1, 1);
+            } else {
+                result = StructuredNode::Multiply(box StructuredNode::Number(Number::Rational(-1, 1)), box result);
+            }
+        }
 
         // Construct implicit multiplications as long as the next token is one which can be
         // implicitly multipled with. "2x" will initially parse as "2", then this pass can pick up

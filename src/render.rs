@@ -562,4 +562,8 @@ pub trait Renderer {
 
         panic!("cursor was not rendered");
     }
+
+    /// An overridable special option: the padding from the right of a square root node where the
+    /// inner expression should be rendered. 
+    fn square_root_padding(&self) -> u64 { 0 }
 }

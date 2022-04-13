@@ -22,9 +22,7 @@ impl Renderer for AsciiRenderer {
 
             Glyph::Fraction { inner_width } => Area::new(inner_width, 1),
 
-            // TODO: currently we'll just force the inner area into the bottom right, we may want to
-            // offer more granular control of this in future
-            Glyph::Sqrt { inner_area } => Area::new(inner_area.width + 2, inner_area.height + 1),
+            Glyph::Sqrt { inner_area } => Area::new(inner_area.width + 3, inner_area.height + 1),
 
             Glyph::LeftParenthesis { inner_height } | Glyph::RightParenthesis { inner_height }
                 => Area::new(1, inner_height),
@@ -33,6 +31,8 @@ impl Renderer for AsciiRenderer {
             Glyph::Placeholder => Area::new(1, 1),
         }
     }
+
+    fn square_root_padding(&self) -> u64 { 1 }
 
     fn init(&mut self, size: Area) {
         self.lines = Vec::new();
@@ -132,6 +132,8 @@ impl Renderer for AsciiRenderer {
                 for dx in 2..(2+inner_area.width) {
                     self.put_char('-', point.dx(dx as i64));
                 }
+                self.put_char('.', point.dx(inner_area.width as i64 + 2));
+                self.put_char('\'', point.dx(inner_area.width as i64 + 2).dy(1));
             },
             Glyph::Cursor { height } => {
                 for dy in 0..height {

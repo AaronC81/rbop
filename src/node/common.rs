@@ -24,9 +24,9 @@ where T : Layoutable
         inner_area
     }, properties);
 
-    // We assume that the inner layout goes in the very bottom right, so work out the
-    // offset required based on the difference of the two areas
-    let x_offset = sqrt_symbol_layout.area.width - inner_layout.area.width;
+    // We assume that the inner layout goes in the very bottom right, factoring in padding, so work
+    // out the offset required based on the difference of the two areas
+    let x_offset = sqrt_symbol_layout.area.width - inner_layout.area.width - renderer.square_root_padding();
     let y_offset = sqrt_symbol_layout.area.height - inner_layout.area.height;
 
     // Merge the two

@@ -44,7 +44,7 @@ impl Default for AngleUnit {
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct EvaluationSettings {
     /// The angle unit to use for trigonometric functions.
-    angle_unit: AngleUnit,
+    pub angle_unit: AngleUnit,
 }
 
 impl StructuredNode {

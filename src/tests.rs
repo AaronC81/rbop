@@ -2,8 +2,9 @@ use core::assert_matches::assert_matches;
 use core::str::FromStr;
 
 use crate::error::NodeError;
+use crate::node::function::Function;
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
-use crate::node::structured::EvaluationSettings;
+use crate::node::structured::{EvaluationSettings, AngleUnit};
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport, LayoutComputationProperties, Glyph};
 use crate::{Number, UnstructuredNodeList};
@@ -1277,4 +1278,25 @@ fn test_size_reduction_level() {
             assert_eq!(glyph.size_reduction_level, 0);
         }
     }
+}
+
+#[test]
+fn test_function_evaluation() {
+    assert_eq!(
+        Function::Sine.evaluate(&[dec!(90)], &EvaluationSettings { angle_unit: AngleUnit::Degree }),
+        Ok(dec!(1)),
+    );
+    assert_eq!(
+        Function::Sine.evaluate(&[Number::Decimal(Decimal::PI / Decimal::TWO)], &EvaluationSettings { angle_unit: AngleUnit::Radian }),
+        Ok(dec!(1)),
+    );
+
+    assert_eq!(
+        Function::Cosine.evaluate(&[dec!(180)], &EvaluationSettings { angle_unit: AngleUnit::Degree }),
+        Ok(dec!(-1)),
+    );
+    assert_eq!(
+        Function::Cosine.evaluate(&[Number::Decimal(Decimal::PI)], &EvaluationSettings { angle_unit: AngleUnit::Radian }),
+        Ok(dec!(-1)),
+    );
 }

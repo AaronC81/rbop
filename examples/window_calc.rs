@@ -23,7 +23,7 @@ fn main() {
 #[cfg(feature = "examples")]
 mod window_calc {
     use std::rc::Rc;
-    use rbop::{Token, UnstructuredNode, UnstructuredNodeList, node::unstructured::{UnstructuredNodeRoot, Upgradable}, render::{Renderer, SizedGlyph, ViewportGlyph}};
+    use rbop::{Token, UnstructuredNode, UnstructuredNodeList, node::{unstructured::{UnstructuredNodeRoot, Upgradable}, structured::EvaluationSettings}, render::{Renderer, SizedGlyph, ViewportGlyph}};
     use speedy2d::{self, Graphics2D, Window, color::Color, font::{Font, FormattedTextBlock, TextLayout, TextOptions}, window::{VirtualKeyCode, WindowHandler, WindowHelper}};
 
     // This is the struct we'll implement `Renderer` on! The fields will be very
@@ -220,7 +220,7 @@ mod window_calc {
                     let mut renderer = self.create_renderer(Some(graphics));
                     renderer.draw_all(&self.root, Some(&mut self.nav_path.to_navigator()), None);
 
-                    let result = self.root.upgrade().map(|x| x.evaluate());
+                    let result = self.root.upgrade().map(|x| x.evaluate(&EvaluationSettings::default()));
                     renderer.text_layout(&match result {
                         Ok(Ok(number)) => format!("{:?}", number),
 

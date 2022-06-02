@@ -28,6 +28,7 @@ mod ascii_calc {
     use std::io::{Write, stdin, stdout};
     use std::error::Error;
 
+    use rbop::node::structured::EvaluationSettings;
     use termion::event::Key;
     use termion::input::TermRead;
     use termion::raw::IntoRawMode;
@@ -148,7 +149,7 @@ mod ascii_calc {
                     // If the upgrade succeeded, we now have a valid structured node tree. We can
                     // try to evaluate this now, which might fail if there are maths errors or
                     // similar.
-                    match upgraded.evaluate() {
+                    match upgraded.evaluate(&EvaluationSettings::default()) {
                         Ok(result) => write!(stdout, "{:?}", result)?,
                         Err(err) => write!(stdout, "Evaluation error: {}", err)?,
                     }

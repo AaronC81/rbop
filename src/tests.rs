@@ -3,6 +3,7 @@ use core::str::FromStr;
 
 use crate::error::NodeError;
 use crate::node::simplified::{Simplifiable, SimplifiedNode};
+use crate::node::structured::EvaluationSettings;
 use crate::node::unstructured::{Navigable, Serializable, UnstructuredNodeRoot, Upgradable};
 use crate::render::{Area, CalculatedPoint, Layoutable, Viewport, LayoutComputationProperties, Glyph};
 use crate::{Number, UnstructuredNodeList};
@@ -157,7 +158,7 @@ fn test_upgrade_negative_numbers() {
 
     // No ambiguity between minus and subtract
     assert_eq!(
-        tokens!(1 - - 2).upgrade().unwrap().evaluate().unwrap(),
+        tokens!(1 - - 2).upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         rat!(3)
     );
 }
@@ -192,7 +193,7 @@ fn test_decimals() {
 
     // Evaluation
     assert_eq!(
-        tokens!(0 . 3 - 0 . 1).upgrade().unwrap().evaluate().unwrap(),
+        tokens!(0 . 3 - 0 . 1).upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         dec!(0.2)
     );
 
@@ -204,7 +205,7 @@ fn test_decimals() {
 
     // Check we accept the "3." form, and that it becomes a decimal rather than a rational
     assert_eq!(
-        tokens!(3 . + 2 .).upgrade().unwrap().evaluate().unwrap(),
+        tokens!(3 . + 2 .).upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         dec!(5)
     );
 
@@ -690,7 +691,7 @@ fn test_variables() {
             .unwrap()
             .substitute_variable('x', &StructuredNode::Number(dec!(9)))
             .substitute_variable('y', &StructuredNode::Number(dec!(2)))
-            .evaluate()
+            .evaluate(&EvaluationSettings::default())
             .unwrap(),
         dec!(14)
     )
@@ -814,7 +815,7 @@ fn test_power() {
         uns_list!(
             token!(2),
             UnstructuredNode::Power(tokens!(3))
-        ).upgrade().unwrap().evaluate().unwrap(),
+        ).upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         rat!(8),
     );
 
@@ -884,7 +885,7 @@ fn test_power() {
         ],
     );
     assert_eq!(
-        tree.upgrade().unwrap().evaluate().unwrap(),
+        tree.upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         rat!(16777218)
     );
 
@@ -902,7 +903,7 @@ fn test_power() {
         ],
     );
     assert_eq!(
-        tree.upgrade().unwrap().evaluate().unwrap(),
+        tree.upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         rat!(2)
     );
 
@@ -923,7 +924,7 @@ fn test_power() {
         ],
     );
     assert_eq!(
-        tree.upgrade().unwrap().evaluate().unwrap(),
+        tree.upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         rat!(1, 4)
     );
 
@@ -943,7 +944,7 @@ fn test_power() {
         ],
     );
     assert!(matches!(
-        tree.upgrade().unwrap().evaluate().unwrap(),
+        tree.upgrade().unwrap().evaluate(&EvaluationSettings::default()).unwrap(),
         Number::Decimal(_),
     ));
 }
@@ -1245,7 +1246,7 @@ fn test_divide_by_zero() {
     let result = StructuredNode::Divide(
         box StructuredNode::Number(rat!(12)),
         box StructuredNode::Number(rat!(0)),
-    ).disambiguate().unwrap().evaluate();
+    ).disambiguate().unwrap().evaluate(&EvaluationSettings::default());
     assert_matches!(result, Err(_));
 
     // Decimal
@@ -1255,7 +1256,7 @@ fn test_divide_by_zero() {
             box StructuredNode::Number(dec!(0)),
         ),
         box StructuredNode::Number(dec!(0.1)),
-    ).disambiguate().unwrap().evaluate();
+    ).disambiguate().unwrap().evaluate(&EvaluationSettings::default());
     assert_matches!(result, Err(_));
 }
 

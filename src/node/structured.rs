@@ -27,6 +27,26 @@ pub enum StructuredNode {
     Parentheses(Box<StructuredNode>),
 }
 
+/// A unit in which angles are measured.
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum AngleUnit {
+    Degree,
+    Radian,
+}
+
+impl Default for AngleUnit {
+    fn default() -> Self {
+        Self::Degree
+    }
+}
+
+/// Settings for how structured nodes are evaluated into a number.
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
+pub struct EvaluationSettings {
+    /// The angle unit to use for trigonometric functions.
+    angle_unit: AngleUnit,
+}
+
 impl StructuredNode {
     /// Returns true if this node is `Add` or `Subtract`.
     pub fn add_or_sub(&self) -> bool {
@@ -88,18 +108,18 @@ impl StructuredNode {
     }
 
     /// Evaluates this node into a single number.
-    pub fn evaluate(&self) -> Result<Number, MathsError> {
+    pub fn evaluate(&self, settings: &EvaluationSettings) -> Result<Number, MathsError> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),
             StructuredNode::Variable(_) => Err(MathsError::MissingVariable),
             StructuredNode::Sqrt(inner) =>
-                inner.evaluate()?.to_decimal().sqrt().map(|x| x.into()).ok_or(MathsError::InvalidSqrt),
-            StructuredNode::Power(b, e) => b.evaluate()?.checked_pow(e.evaluate()?),
-            StructuredNode::Add(a, b) => a.evaluate()?.checked_add(b.evaluate()?),
-            StructuredNode::Subtract(a, b) => a.evaluate()?.checked_sub(b.evaluate()?),
-            StructuredNode::Multiply(a, b) => a.evaluate()?.checked_mul(b.evaluate()?),
-            StructuredNode::Divide(a, b) => a.evaluate()?.checked_div(b.evaluate()?),
-            StructuredNode::Parentheses(inner) => inner.evaluate(),
+                inner.evaluate(settings)?.to_decimal().sqrt().map(|x| x.into()).ok_or(MathsError::InvalidSqrt),
+            StructuredNode::Power(b, e) => b.evaluate(settings)?.checked_pow(e.evaluate(settings)?),
+            StructuredNode::Add(a, b) => a.evaluate(settings)?.checked_add(b.evaluate(settings)?),
+            StructuredNode::Subtract(a, b) => a.evaluate(settings)?.checked_sub(b.evaluate(settings)?),
+            StructuredNode::Multiply(a, b) => a.evaluate(settings)?.checked_mul(b.evaluate(settings)?),
+            StructuredNode::Divide(a, b) => a.evaluate(settings)?.checked_div(b.evaluate(settings)?),
+            StructuredNode::Parentheses(inner) => inner.evaluate(settings),
         }
     }
 

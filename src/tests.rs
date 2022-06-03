@@ -547,8 +547,8 @@ fn test_modification() {
 
     node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Token(Token::Add));
     node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Fraction(
-        UnstructuredNodeList { items: vec![] },
-        UnstructuredNodeList { items: vec![] },
+        UnstructuredNodeList::new(),
+        UnstructuredNodeList::new(),
     ));
     node.insert(&mut nav_path, &mut renderer, None, UnstructuredNode::Token(Token::Digit(9)));
     assert_eq!(nav_path, NavPath::new(vec![4, 0, 3, 0, 1]));

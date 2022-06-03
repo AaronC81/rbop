@@ -267,15 +267,15 @@ mod window_calc {
                 VirtualKeyCode::Minus => Some(UnstructuredNode::Token(Token::Subtract)),
                 VirtualKeyCode::Asterisk => Some(UnstructuredNode::Token(Token::Multiply)),
                 VirtualKeyCode::Slash => Some(UnstructuredNode::Fraction(
-                    UnstructuredNodeList { items: vec![] },
-                    UnstructuredNodeList { items: vec![] },
+                    UnstructuredNodeList::new(),
+                    UnstructuredNodeList::new(),
                 )),
 
                 VirtualKeyCode::S => Some(UnstructuredNode::Sqrt(
-                    UnstructuredNodeList { items: vec![] },
+                    UnstructuredNodeList::new(),
                 )),
                 VirtualKeyCode::P => Some(UnstructuredNode::Power(
-                    UnstructuredNodeList { items: vec![] },
+                    UnstructuredNodeList::new(),
                 )),
 
                 VirtualKeyCode::Left => { self.root.move_left(&mut self.nav_path, &mut renderer, None); None }
@@ -303,7 +303,7 @@ mod window_calc {
 
     pub fn main() {
         WindowCalc::new_window().run_loop(WindowCalc {
-            root: UnstructuredNodeRoot { root: UnstructuredNodeList { items: vec![] } },
+            root: UnstructuredNodeRoot::new(),
             nav_path: rbop::nav::NavPath::new(vec![0]),
             needs_draw: true,
         })

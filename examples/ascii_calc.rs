@@ -93,19 +93,19 @@ mod ascii_calc {
                 Key::Char('-') => Some(UnstructuredNode::Token(Token::Subtract)),
                 Key::Char('x') => Some(UnstructuredNode::Token(Token::Multiply)),
                 Key::Char('/') => Some(UnstructuredNode::Fraction(
-                    UnstructuredNodeList { items: vec![] },
-                    UnstructuredNodeList { items: vec![] },
+                    UnstructuredNodeList::new(),
+                    UnstructuredNodeList::new(),
                 )),
     
                 Key::Char('s') => Some(UnstructuredNode::Sqrt(
-                    UnstructuredNodeList { items: vec![] }
+                    UnstructuredNodeList::new()
                 )),
                 Key::Char('^') => Some(UnstructuredNode::Power(
-                    UnstructuredNodeList { items: vec![] }
+                    UnstructuredNodeList::new()
                 )),
                 Key::Char('t') => Some(UnstructuredNode::FunctionCall(
                     Function::Sine,
-                    vec![UnstructuredNodeList { items: vec![] }]
+                    vec![UnstructuredNodeList::new()]
                 )),
     
                 Key::Left => { root.move_left(&mut nav_path, &mut renderer, None); None }

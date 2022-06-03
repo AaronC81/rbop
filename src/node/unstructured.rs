@@ -32,14 +32,26 @@ pub enum UnstructuredNode {
     FunctionCall(Function, Vec<UnstructuredNodeList>),
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct UnstructuredNodeList {
     pub items: Vec<UnstructuredNode>
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+impl UnstructuredNodeList {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct UnstructuredNodeRoot {
     pub root: UnstructuredNodeList
+}
+
+impl UnstructuredNodeRoot {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

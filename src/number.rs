@@ -78,12 +78,14 @@ impl Number {
     }
 
     /// Simplifies this number:
-    ///   - For `Decimal`, this does nothing.
+    ///   - For `Decimal`, this normalises the number. This performs lossless conversions such as
+    ///     removing trailing zeroes (which can occur in rust_decimal), and converting -0 to 0.
     ///   - For `Rational`, this divides the numerator and denominator by their GCD. Also ensures
     ///     that any negative sign is on the numerator, not the denominator.
-    fn simplify(&self) -> Number {
+    pub fn simplify(&self) -> Number {
         match self {
-            Self::Decimal(d) => Self::Decimal(*d),
+            Self::Decimal(d) => Self::Decimal(d.normalize()),
+
             Self::Rational(numer, denom) => {
                 let sign = match (*numer < 0, *denom < 0) {
                     (false, false) => 1, // Neither negative

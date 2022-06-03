@@ -2,6 +2,7 @@ use alloc::{vec::Vec, vec};
 use crate::Token;
 
 use crate::nav::NavPathNavigator;
+use crate::node::function::Function;
 
 pub type Dimension = u64;
 
@@ -145,6 +146,9 @@ impl Area {
 pub enum Glyph {
     Digit { number: u8 },
     Point,
+
+    FunctionName { function: Function },
+    Comma,
 
     Variable { name: char },
     

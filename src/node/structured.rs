@@ -12,6 +12,7 @@ use crate::node::common;
 use crate::render::{Glyph, LayoutBlock, Layoutable, Renderer, LayoutComputationProperties};
 use crate::nav::NavPathNavigator;
 
+use super::function::Function;
 use super::simplified::{Simplifiable, SimplifiedNode};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -25,6 +26,7 @@ pub enum StructuredNode {
     Multiply(Box<StructuredNode>, Box<StructuredNode>),
     Divide(Box<StructuredNode>, Box<StructuredNode>),
     Parentheses(Box<StructuredNode>),
+    FunctionCall(Function, Vec<StructuredNode>),
 }
 
 /// A unit in which angles are measured.
@@ -102,7 +104,7 @@ impl StructuredNode {
                 StructuredNode::Subtract(l.clone(), box r)
             }
 
-            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_) | StructuredNode::Power(_, _)
+            StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_) | StructuredNode::Power(_, _) | StructuredNode::FunctionCall(_, _)
                 => self.clone(),
         })
     }
@@ -120,6 +122,10 @@ impl StructuredNode {
             StructuredNode::Multiply(a, b) => a.evaluate(settings)?.checked_mul(b.evaluate(settings)?),
             StructuredNode::Divide(a, b) => a.evaluate(settings)?.checked_div(b.evaluate(settings)?),
             StructuredNode::Parentheses(inner) => inner.evaluate(settings),
+            StructuredNode::FunctionCall(func, args) => {
+                let args = args.iter().map(|n| n.evaluate(settings)).collect::<Result<Vec<_>, _>>()?;
+                func.evaluate(&args, settings)
+            }
         }
     }
 
@@ -140,6 +146,11 @@ impl StructuredNode {
             StructuredNode::Power(b, e) => {
                 b.walk(func);
                 e.walk(func);
+            }
+            StructuredNode::FunctionCall(_, args) => {
+                for arg in args {
+                    arg.walk(func);
+                }
             }
 
             StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
@@ -163,6 +174,11 @@ impl StructuredNode {
             StructuredNode::Power(b, e) => {
                 b.walk_mut(func);
                 e.walk_mut(func);
+            }
+            StructuredNode::FunctionCall(_, args) => {
+                for arg in args {
+                    arg.walk_mut(func);
+                }
             }
 
             StructuredNode::Number(_) | StructuredNode::Variable(_) => (),
@@ -258,6 +274,8 @@ impl Layoutable for StructuredNode {
                 => common::layout_parentheses(inner.deref(), renderer, path, properties),
             StructuredNode::Power(base, exp)
                 => common::layout_power(Some(base.deref()), exp.deref(), renderer, path, properties),
+            StructuredNode::FunctionCall(func, args)
+                => common::layout_function_call(*func, args, renderer, path, properties),
         }
     }
 }
@@ -293,6 +311,11 @@ impl Simplifiable for StructuredNode {
             Self::Power(b, e) => SimplifiedNode::Power(
                 box b.simplify(),
                 box e.simplify(),
+            ),
+
+            Self::FunctionCall(func, args) => SimplifiedNode::FunctionCall(
+                *func,
+                args.iter().map(|n| n.simplify()).collect(),
             ),
 
             Self::Parentheses(n) => n.simplify(),

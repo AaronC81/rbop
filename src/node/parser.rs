@@ -1,4 +1,4 @@
-use alloc::string::ToString;
+use alloc::{string::ToString, vec::Vec};
 use num_traits::Zero;
 use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}, MathematicalOps};
 
@@ -217,6 +217,9 @@ impl<'a> Parser<'a> {
         } else if let Some(Token::Variable(v)) = self.current_token() {
             self.advance();
             self.accepts_power(StructuredNode::Variable(v))?
+        } else if let Some(UnstructuredNode::FunctionCall(func, args)) = self.current() {
+            self.advance();
+            self.accepts_power(StructuredNode::FunctionCall(*func, args.iter().map(|n| n.upgrade()).collect::<Result<Vec<_>, _>>()?))?
         } else {
             return Err(NodeError::ExpectedUnit)
         };

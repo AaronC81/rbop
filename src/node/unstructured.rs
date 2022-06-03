@@ -1,6 +1,6 @@
 use alloc::{vec::Vec, vec};
 use crate::{error::NodeError, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties, CalculatedPoint}};
-use super::{common, parser, structured::StructuredNode};
+use super::{common, parser, structured::StructuredNode, function::Function};
 
 #[derive(Clone)]
 pub enum UnstructuredItem<'a> {
@@ -29,6 +29,7 @@ pub enum UnstructuredNode {
     Fraction(UnstructuredNodeList, UnstructuredNodeList),
     Parentheses(UnstructuredNodeList),
     Power(UnstructuredNodeList),
+    FunctionCall(Function, Vec<UnstructuredNodeList>),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -103,6 +104,13 @@ impl Navigable for UnstructuredNode {
 
                 exp.navigate_trace(step_path, trace)
             }
+            UnstructuredNode::FunctionCall(_, args) => {
+                if next_index >= args.len() {
+                    panic!("index out of range for function call navigation")
+                }
+
+                args[next_index].navigate_trace(step_path, trace)
+            }
             UnstructuredNode::Token(_) => panic!("cannot navigate into token"),
         }
     }
@@ -175,7 +183,7 @@ impl UnstructuredNodeRoot {
 
             match right_child {
                 // Structured nodes
-                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) => {
+                UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) | UnstructuredNode::FunctionCall(_, _) => {
                     // Navigate into its first/only slot, and start at the first item of the
                     // unstructured
                     path.push(0);
@@ -220,6 +228,13 @@ impl UnstructuredNodeRoot {
                     path.push(0);
                     path.push(n.items.len());
                 },
+
+                UnstructuredNode::FunctionCall(_, args) => {
+                    // Same as above case, but needs extra logic due to vec
+                    // TODO: won't work with zero-argument functions
+                    path.push(0);
+                    path.push(args.last().expect("no args in call").items.len());
+                }
 
                 // Anything else, nothing special needed
                 UnstructuredNode::Token(_) => (),
@@ -299,7 +314,7 @@ impl UnstructuredNodeRoot {
         current_node.items.insert(index, new_node.clone());
 
         match new_node {
-            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) => {
+            UnstructuredNode::Sqrt(_) | UnstructuredNode::Fraction(_, _) | UnstructuredNode::Parentheses(_) | UnstructuredNode::Power(_) | UnstructuredNode::FunctionCall(_, _) => {
                 // Move into the new node
                 path.push(0);
                 path.push(0);
@@ -439,6 +454,11 @@ impl Upgradable for UnstructuredNode {
             UnstructuredNode::Power(_)
                 => Err(NodeError::PowerMissingBase),
 
+            UnstructuredNode::FunctionCall(func, args)
+                => Ok(StructuredNode::FunctionCall(*func, 
+                    args.iter().map(|a| a.upgrade()).collect::<Result<Vec<_>, _>>()?
+                )),
+
             UnstructuredNode::Token(_) => Err(NodeError::CannotUpgradeToken),
         }
     }
@@ -464,6 +484,8 @@ impl Layoutable for UnstructuredNode {
                 => common::layout_parentheses(inner, renderer, path, properties),
             UnstructuredNode::Power(exp)
                 => common::layout_power(None, exp, renderer, path, properties),
+            UnstructuredNode::FunctionCall(func, args)
+                => common::layout_function_call(*func, args, renderer, path, properties),
         }
     }
 }
@@ -652,6 +674,15 @@ impl Serializable for UnstructuredNode {
                 let mut n = vec![4];
                 n.append(&mut e.serialize());
                 n
+            },
+            UnstructuredNode::FunctionCall(func, args) => {
+                let mut n = vec![5];
+                n.append(&mut func.serialize());
+                n.append(&mut vec![args.len() as u8]);
+                for arg in args {
+                    n.append(&mut arg.serialize());
+                }
+                n
             }
         }
     }
@@ -674,6 +705,15 @@ impl Serializable for UnstructuredNode {
             4 => Some(UnstructuredNode::Power(
                 UnstructuredNodeList::deserialize(bytes)?,
             )),
+            5 => {
+                let func = Function::deserialize(bytes)?;
+                let arg_count = bytes.next()?;
+                let mut args = vec![];
+                for _ in 0..arg_count {
+                    args.push(UnstructuredNodeList::deserialize(bytes)?);
+                }
+                Some(UnstructuredNode::FunctionCall(func, args))
+            },
 
             _ => None,
         }

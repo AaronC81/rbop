@@ -117,6 +117,8 @@ mod window_calc {
                 rbop::render::Glyph::Sqrt { .. } => todo!(),
                 rbop::render::Glyph::Point => todo!(),
                 rbop::render::Glyph::Variable { .. } => todo!(),
+                rbop::render::Glyph::FunctionName { .. } => todo!(),
+                rbop::render::Glyph::Comma => todo!(),
             }
         }
 
@@ -169,6 +171,8 @@ mod window_calc {
                 rbop::render::Glyph::Sqrt { .. } => todo!(),    
                 rbop::render::Glyph::Point => todo!(),
                 rbop::render::Glyph::Variable { .. } => todo!(),
+                rbop::render::Glyph::FunctionName { .. } => todo!(),
+                rbop::render::Glyph::Comma => todo!(),
             }
         }
     }

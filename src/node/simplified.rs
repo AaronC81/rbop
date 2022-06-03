@@ -16,6 +16,8 @@ use rust_decimal::MathematicalOps;
 
 use crate::{Number, error::MathsError};
 
+use super::function::Function;
+
 #[derive(Eq, PartialEq, Debug, Clone)]
 /// A simplified variant of `StructuredNode`. By "simplified", we mean fewer possible variants which
 /// have the same semantic meaning. This provides an easier platform for performing mathematical
@@ -26,6 +28,7 @@ pub enum SimplifiedNode {
     Multiply(Vec<SimplifiedNode>),
     Power(Box<SimplifiedNode>, Box<SimplifiedNode>),
     Add(Vec<SimplifiedNode>),
+    FunctionCall(Function, Vec<SimplifiedNode>),
 }
 
 impl SimplifiedNode {
@@ -50,6 +53,11 @@ impl SimplifiedNode {
                 b.sort();
                 e.sort();
             },
+            SimplifiedNode::FunctionCall(_, args) => {
+                for arg in args {
+                    arg.sort();
+                }
+            }
             Self::Number(_) | Self::Variable(_) => (),
         }
 
@@ -64,7 +72,7 @@ impl SimplifiedNode {
     pub fn sort_one_level(&mut self) -> &mut Self {
         match self {
             SimplifiedNode::Add(n) | SimplifiedNode::Multiply(n) => n.sort(),
-            SimplifiedNode::Power(_, _) | Self::Number(_) | Self::Variable(_) => (),
+            SimplifiedNode::Power(_, _) | Self::Number(_) | Self::Variable(_) | Self::FunctionCall(_, _) => (),
         }
 
         self
@@ -82,6 +90,10 @@ impl SimplifiedNode {
             Self::Power(b, e) => Self::Power(
                 box b.flatten(),
                 box e.flatten()
+            ),
+            Self::FunctionCall(func, args) => Self::FunctionCall(
+                func,
+                args.into_iter().map(|n| n.flatten()).collect(),
             ),
             Self::Number(_) | Self::Variable(_) => self
         }
@@ -267,6 +279,8 @@ impl SimplifiedNode {
                     }
                         
                     box SimplifiedNode::Add(_) => todo!(),      // TODO: Expand
+
+                    box SimplifiedNode::FunctionCall(_, _) => todo!(), // TODO
                 }
             }
 
@@ -382,6 +396,10 @@ impl SimplifiedNode {
                     *self = v[0].clone();
                 }
             }
+        
+            // TODO: how to approach this? Maybe evaluate if all arguments have been reduced to 
+            // numbers?
+            SimplifiedNode::FunctionCall(_, _) => todo!(),
         }
 
         Ok(status)

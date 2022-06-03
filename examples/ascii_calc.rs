@@ -28,6 +28,7 @@ mod ascii_calc {
     use std::io::{Write, stdin, stdout};
     use std::error::Error;
 
+    use rbop::node::function::Function;
     use rbop::node::structured::EvaluationSettings;
     use termion::event::Key;
     use termion::input::TermRead;
@@ -101,6 +102,10 @@ mod ascii_calc {
                 )),
                 Key::Char('^') => Some(UnstructuredNode::Power(
                     UnstructuredNodeList { items: vec![] }
+                )),
+                Key::Char('t') => Some(UnstructuredNode::FunctionCall(
+                    Function::Sine,
+                    vec![UnstructuredNodeList { items: vec![] }]
                 )),
     
                 Key::Left => { root.move_left(&mut nav_path, &mut renderer, None); None }

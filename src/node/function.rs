@@ -1,8 +1,9 @@
+use alloc::{vec::Vec, vec};
 use rust_decimal::{MathematicalOps, Decimal};
 
 use crate::{Number, error::MathsError};
 
-use super::structured::{EvaluationSettings, AngleUnit};
+use super::{structured::{EvaluationSettings, AngleUnit}, unstructured::Serializable};
 
 /// A mathematical function, for which an invocation may appear in an unstructured or structured
 /// node tree.
@@ -52,6 +53,24 @@ impl Function {
                     Self::Cosine => target.cos(),
                 }))
             }
+        }
+    }
+}
+
+impl Serializable for Function {
+    fn serialize(&self) -> Vec<u8> {
+        vec![match self {
+            Function::Sine => 1,
+            Function::Cosine => 2,
+        }]
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        match bytes.next() {
+            Some(1) => Some(Function::Sine),
+            Some(2) => Some(Function::Cosine),
+
+            _ => None,
         }
     }
 }

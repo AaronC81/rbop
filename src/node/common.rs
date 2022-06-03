@@ -1,6 +1,10 @@
 use core::cmp::max;
 
+use alloc::vec;
+
 use crate::{nav::NavPathNavigator, render::{Glyph, LayoutBlock, Layoutable, MergeBaseline, Renderer, LayoutComputationProperties}};
+
+use super::function::Function;
 
 pub fn layout_sqrt<T>(inner: &T, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
@@ -188,4 +192,56 @@ where T : Layoutable
         0,
     );
     base_layout.merge_in_place(&exp_layout, MergeBaseline::SelfAsBaseline)
+}
+
+pub fn layout_function_call<T>(func: Function, args: &[T], renderer: &mut impl Renderer, mut path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
+where T : Layoutable
+{
+    // Compute layouts for each function argument
+    let mut arg_layouts = vec![];
+    for (i, arg) in args.iter().enumerate() {
+        let mut path = if let Some(ref mut p) = path {
+            if p.next() == i {
+                Some(p.step())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        arg_layouts.push(arg.layout(renderer, (&mut path).as_mut(), properties));
+    }
+
+    // Join each argument layout, separated by a comma
+    let mut joined_arg_layout = LayoutBlock::empty();
+    for arg_layout in arg_layouts {
+        joined_arg_layout = joined_arg_layout
+            .merge_along_baseline(&arg_layout)
+            .merge_along_baseline(&LayoutBlock::from_glyph(renderer, Glyph::Comma, properties));
+    }
+
+    // Compute layout for function name
+    let func_glyph = Glyph::FunctionName { function: func };
+    let func_layout = LayoutBlock::from_glyph(renderer, func_glyph, properties);
+
+    // Compute layouts for parentheses
+    let mut left_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::LeftParenthesis {
+        inner_height: joined_arg_layout.area.height,
+    }, properties);
+    let mut right_paren_layout = LayoutBlock::from_glyph(renderer, Glyph::RightParenthesis {
+        inner_height: joined_arg_layout.area.height,
+    }, properties);
+
+    // Match the baselines for these glyphs with the inner baseline
+    left_paren_layout.baseline = joined_arg_layout.baseline;
+    right_paren_layout.baseline = joined_arg_layout.baseline;
+
+    // Merge everything together
+    LayoutBlock::layout_horizontal(&[
+        func_layout,
+        left_paren_layout,
+        joined_arg_layout,
+        right_paren_layout,
+    ])
 }

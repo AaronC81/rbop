@@ -18,7 +18,7 @@ impl AsciiRenderer {
 impl Renderer for AsciiRenderer {
     fn size(&mut self, glyph: Glyph, _: u32) -> Area {
         match glyph {
-            Glyph::Digit { .. } | Glyph::Point | Glyph::Variable { .. } | Glyph::Add | Glyph::Subtract | Glyph::Multiply | Glyph::Divide => Area::square(1),
+            Glyph::Digit { .. } | Glyph::Point | Glyph::Variable { .. } | Glyph::Add | Glyph::Subtract | Glyph::Multiply | Glyph::Divide | Glyph::Comma => Area::square(1),
 
             Glyph::Fraction { inner_width } => Area::new(inner_width, 1),
 
@@ -26,6 +26,8 @@ impl Renderer for AsciiRenderer {
 
             Glyph::LeftParenthesis { inner_height } | Glyph::RightParenthesis { inner_height }
                 => Area::new(1, inner_height),
+
+            Glyph::FunctionName { function } => Area::new(function.render_name().len() as u64, 1),
 
             Glyph::Cursor { height } => Area::new(1, height),
             Glyph::Placeholder => Area::new(1, 1),
@@ -88,6 +90,7 @@ impl Renderer for AsciiRenderer {
                 self.put_char(char, point);
             },
             Glyph::Point => self.put_char('.', point),
+            Glyph::Comma => self.put_char(',', point),
             Glyph::Variable { name } => self.put_char(name, point),
             Glyph::Add => self.put_char('+', point),
             Glyph::Subtract => self.put_char('-', point),
@@ -140,6 +143,12 @@ impl Renderer for AsciiRenderer {
                     self.put_char('|', point.dy(dy as i64))
                 }
             },
+            Glyph::FunctionName { function } => {
+                let chars = function.render_name().chars().collect::<Vec<_>>();
+                for dx in 0..chars.len() {
+                    self.put_char(chars[dx], point.dx(dx as i64))
+                }
+            }
             Glyph::Placeholder => self.put_char('X', point),
         }
     }

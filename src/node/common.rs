@@ -197,7 +197,8 @@ where T : Layoutable
 pub fn layout_function_call<T>(func: Function, args: &[T], renderer: &mut impl Renderer, mut path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock
 where T : Layoutable
 {
-    // Compute layouts for each function argument
+    // Compute layouts for each function argument, interspersing commas
+    let mut is_first_arg = true;
     let mut arg_layouts = vec![];
     for (i, arg) in args.iter().enumerate() {
         let mut path = if let Some(ref mut p) = path {
@@ -210,16 +211,16 @@ where T : Layoutable
             None
         };
         
+        if !is_first_arg {
+            arg_layouts.push(LayoutBlock::from_glyph(renderer, Glyph::Comma, properties))
+        }
+        is_first_arg = false;
+
         arg_layouts.push(arg.layout(renderer, (&mut path).as_mut(), properties));
     }
 
-    // Join each argument layout, separated by a comma
-    let mut joined_arg_layout = LayoutBlock::empty();
-    for arg_layout in arg_layouts {
-        joined_arg_layout = joined_arg_layout
-            .merge_along_baseline(&arg_layout)
-            .merge_along_baseline(&LayoutBlock::from_glyph(renderer, Glyph::Comma, properties));
-    }
+    // Join argument layouts (and commas)
+    let joined_arg_layout = LayoutBlock::layout_horizontal(&arg_layouts);
 
     // Compute layout for function name
     let func_glyph = Glyph::FunctionName { function: func };

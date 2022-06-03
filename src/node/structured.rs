@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use core::ops::Deref;
 
 use alloc::boxed::Box;
@@ -39,6 +40,15 @@ pub enum AngleUnit {
 impl Default for AngleUnit {
     fn default() -> Self {
         Self::Degree
+    }
+}
+
+impl Display for AngleUnit {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(match self {
+            Self::Degree => "Degree",
+            Self::Radian => "Radian",
+        })
     }
 }
 

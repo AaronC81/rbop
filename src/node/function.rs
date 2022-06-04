@@ -1,4 +1,5 @@
 use alloc::{vec::Vec, vec};
+use num_integer::Integer;
 use rust_decimal::{MathematicalOps, Decimal};
 
 use crate::{Number, error::MathsError};
@@ -11,6 +12,7 @@ use super::{structured::{EvaluationSettings, AngleUnit}, unstructured::Serializa
 pub enum Function {
     Sine,
     Cosine,
+    GreatestCommonDenominator,
 }
 
 impl Function {
@@ -20,6 +22,7 @@ impl Function {
         match self {
             Self::Sine => "sin",
             Self::Cosine => "cos",
+            Self::GreatestCommonDenominator => "gcd",
         }
     }
 
@@ -27,6 +30,7 @@ impl Function {
     pub fn argument_count(&self) -> usize {
         match self {
             Self::Sine | Self::Cosine => 1,
+            Self::GreatestCommonDenominator => 2,
         }
     }
 
@@ -51,7 +55,21 @@ impl Function {
                 Ok(Number::Decimal(match self {
                     Self::Sine => target.sin(),
                     Self::Cosine => target.cos(),
+                    _ => unreachable!()
                 }))
+            },
+
+            Self::GreatestCommonDenominator => {
+                // This is an integer operation, so convert both numbers to integers - if we can't,
+                // just return 1
+                let int_a = if let Some(x) = arguments[0].to_whole() { x } else {
+                    return Ok(Number::Decimal(Decimal::ONE))
+                };
+                let int_b = if let Some(x) = arguments[1].to_whole() { x } else {
+                    return Ok(Number::Decimal(Decimal::ONE))
+                };
+
+                Ok(int_a.gcd(&int_b).into())
             }
         }
     }
@@ -62,6 +80,7 @@ impl Serializable for Function {
         vec![match self {
             Function::Sine => 1,
             Function::Cosine => 2,
+            Function::GreatestCommonDenominator => 3,
         }]
     }
 
@@ -69,6 +88,7 @@ impl Serializable for Function {
         match bytes.next() {
             Some(1) => Some(Function::Sine),
             Some(2) => Some(Function::Cosine),
+            Some(3) => Some(Function::GreatestCommonDenominator),
 
             _ => None,
         }

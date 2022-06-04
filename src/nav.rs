@@ -20,7 +20,7 @@ impl NavPath {
     }
 
     /// Returns true if the entire path only has one item.
-    pub fn root(&mut self) -> bool {
+    pub fn root(&self) -> bool {
         self.path.len() == 1
     }    
 
@@ -57,31 +57,31 @@ impl core::ops::Index<usize> for NavPath {
 }
 
 pub struct NavPathNavigator<'a> {
-    path: &'a mut NavPath,
+    path: &'a NavPath,
     index: usize,
 }
 
 impl<'a> NavPathNavigator<'a> {
     /// The next index in the path.
-    pub fn next(&mut self) -> usize {
+    pub fn next(&self) -> usize {
         self.path.path[self.index]
     }
 
     /// Returns true if there is only one index left in the path; in other words, the cursor must
     /// be in this node.
-    pub fn here(&mut self) -> bool {
+    pub fn here(&self) -> bool {
         self.index == self.path.path.len() - 1
     }
 
     /// Returns a copy of the path with the first item removed, making the path relative to one node
     /// deeper into the tree.
-    pub fn step(&mut self) -> NavPathNavigator {
+    pub fn step(&self) -> NavPathNavigator {
         NavPathNavigator { index: self.index + 1, path: self.path }
     }
 
     /// Helper method for Renderer. Returns a copy created by `step`, if `next` returns the given
     /// value.
-    pub fn step_if_next(&mut self, required_next: usize) -> Option<NavPathNavigator> {
+    pub fn step_if_next(&self, required_next: usize) -> Option<NavPathNavigator> {
         if self.next() == required_next {
             Some(self.step())
         } else {

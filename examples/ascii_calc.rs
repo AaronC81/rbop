@@ -103,10 +103,8 @@ mod ascii_calc {
                 Key::Char('^') => Some(UnstructuredNode::Power(
                     UnstructuredNodeList::new()
                 )),
-                Key::Char('t') => Some(UnstructuredNode::FunctionCall(
-                    Function::Sine,
-                    vec![UnstructuredNodeList::new()]
-                )),
+                Key::Char('t') => Some(UnstructuredNode::new_function_call(Function::Sine)),
+                Key::Char('g') => Some(UnstructuredNode::new_function_call(Function::GreatestCommonDenominator)),
     
                 Key::Left => { root.move_left(&mut nav_path, &mut renderer, None); None }
                 Key::Right => { root.move_right(&mut nav_path, &mut renderer, None); None }

@@ -4,7 +4,7 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct NavPath {
     path: Vec<usize>,
 }
@@ -42,9 +42,14 @@ impl NavPath {
         *self.path.last_mut().unwrap() = (*self.path.last().unwrap() as isize + n) as usize;
     }
 
-    // Gets the length of this path.
+    /// Gets the length of this path.
     pub fn len(&self) -> usize {
         self.path.len()
+    }
+
+    /// Gets the path navigation entry at the given index.
+    pub fn get_index(&self, i: usize) -> usize {
+        self.path[i]
     }
 }
 

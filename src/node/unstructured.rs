@@ -1,3 +1,5 @@
+use core::iter::repeat;
+
 use alloc::{vec::Vec, vec};
 use crate::{error::NodeError, nav::{self, MoveVerticalDirection, NavPath, NavPathNavigator}, render::{Glyph, LayoutBlock, Layoutable, Renderer, Viewport, ViewportVisibility, LayoutComputationProperties, CalculatedPoint}};
 use super::{common, parser, structured::StructuredNode, function::Function};
@@ -30,6 +32,14 @@ pub enum UnstructuredNode {
     Parentheses(UnstructuredNodeList),
     Power(UnstructuredNodeList),
     FunctionCall(Function, Vec<UnstructuredNodeList>),
+}
+
+impl UnstructuredNode {
+    /// Creates a new `UnstructuredNode::FunctionCall` given a function.
+    pub fn new_function_call(func: Function) -> Self {
+        let arg_vec = repeat(UnstructuredNodeList::new()).take(func.argument_count()).collect();
+        Self::FunctionCall(func, arg_vec)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
@@ -181,6 +191,26 @@ impl UnstructuredNodeRoot {
         if index == children.len() {
             // Is there another node above this one?
             if !path.root() {
+                // Are we inside a function call?
+                // To check, clone the path, step out to the structural node, and navigate to it
+                // Sure, there can be sub-nodes (like we need to consider for fractions), but we'll only
+                // ever want to hop between arguments if we're outside those, so this relatively naive
+                // check is fine
+                let mut outer_path = path.clone();
+                outer_path.pop(2);
+                let (outer_node, index) = self.root.navigate(&mut outer_path.to_navigator());
+                if let UnstructuredNode::FunctionCall(_, args) = &outer_node.items[index] {
+                    // Can we move right into another argument?
+                    let current_arg_index = path.get_index(path.len() - 2);
+                    if current_arg_index < args.len() - 1 {
+                        // Yes, we can! Move right into the beginning of the next argument
+                        path.pop(2);
+                        path.push(current_arg_index + 1);
+                        path.push(0);
+                        return
+                    }
+                }
+
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
 
@@ -220,6 +250,23 @@ impl UnstructuredNodeRoot {
         if index == 0 {
             // Is there another node above this one?
             if !path.root() {
+                // Are we inside a function call?
+                // (Logic largely duplicated from move_right)
+                let mut outer_path = path.clone();
+                outer_path.pop(2);
+                let (outer_node, index) = self.root.navigate(&mut outer_path.to_navigator());
+                if let UnstructuredNode::FunctionCall(_, args) = &outer_node.items[index] {
+                    // Can we move right into another argument?
+                    let current_arg_index = path.get_index(path.len() - 2);
+                    if current_arg_index > 0 {
+                        // Yes, we can! Move right into the end of the next argument
+                        path.pop(2);
+                        path.push(current_arg_index - 1);
+                        path.push(args[current_arg_index - 1].items.len());
+                        return
+                    }
+                }
+
                 // Move out of the unstructured and the structural node above it
                 path.pop(2);
 
@@ -242,9 +289,9 @@ impl UnstructuredNodeRoot {
                 },
 
                 UnstructuredNode::FunctionCall(_, args) => {
-                    // Same as above case, but needs extra logic due to vec
+                    // Move into last slot
                     // TODO: won't work with zero-argument functions
-                    path.push(0);
+                    path.push(args.len() - 1);
                     path.push(args.last().expect("no args in call").items.len());
                 }
 

@@ -1,15 +1,32 @@
+//! Error types for various operations.
+
 use alloc::{fmt, vec, vec::Vec};
 
 use crate::node::unstructured::Serializable;
 
+/// A trait implemented on any rbop error.
 pub trait Error : alloc::fmt::Display + alloc::fmt::Debug {}
 
+/// An error which occurs while parsing or upgrading a node tree.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum NodeError {
+    /// The parser was unable to use all of the tokens it was given, indicating a syntax error.
     UnexpectedTokensAtEnd,
+
+    /// A power was used, but while upgrading, there was no suitable node preceding it to use as a
+    /// base.
     PowerMissingBase,
+
+    /// The parser was expecting a node which could be parsed as a unit, but could not find one,
+    /// indicating a syntax error.
     ExpectedUnit,
+
+    /// While upgrading, a [Token](crate::node::unstructured::UnstructuredNode::Token) was found.
+    /// These should always be handled by the parser, so finding one during an upgrade represents an
+    /// internal error.
     CannotUpgradeToken,
+
+    /// A numeral used in an expression does not fit into rbop's number representation.
     Overflow,
 }
 
@@ -50,13 +67,24 @@ impl Serializable for NodeError {
     }
 }
 
-
+/// A mathematical error encountered while evaluating a node tree.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum MathsError {
+    /// Attempted to divide by zero.
     DivisionByZero,
+
+    /// A square root operation was invalid, as determined by the implementation of
+    /// [rust_decimal::MathematicalOps::sqrt].
     InvalidSqrt,
+
+    /// A variable was used in the expression, but variables cannot currently have values, so this
+    /// is invalid.
     MissingVariable,
+
+    /// The result of an operation does not fit into rbop's number representation.
     Overflow,
+
+    /// Raising to a power would give an imaginary result, which rbop cannot represent.
     Imaginary,
 }
 

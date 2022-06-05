@@ -1,3 +1,5 @@
+//! Provides one trait, [DecimalExtensions], which adds additional methods to [Decimal].
+
 use num_traits::One;
 use rust_decimal::{Decimal, MathematicalOps};
 

@@ -1,3 +1,11 @@
+//! Provides data structures for storing the cursor's position inside a node tree. 
+//! 
+//! See the documentation for [NavPath] to find out how this works.
+//! 
+//! Actual navigation is handled by the node implementations themselves. As the only editable node
+//! type, this is currently only on unstructured nodes, implementing using the
+//! [Navigable](crate::node::unstructured::Navigable) trait.
+
 use alloc::{vec, vec::Vec};
 
 use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputationProperties}};
@@ -11,13 +19,13 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 /// 
 /// As a general rule, indexes alternate between:
 /// 
-/// - Indexing some "slot" of an `UnstructuredNode`, for example 0 for the top of a fraction or 1
-///   for the bottom;
-/// - And indexing into the `UnstructuredNodeList` in that slot.
+/// - Indexing some "slot" of an [UnstructuredNode](crate::UnstructuredNode), for example 0 for the 
+///   top of a fraction or 1 for the bottom;
+/// - And indexing into the [UnstructuredNodeList] in that slot.
 /// 
-/// Indexes into `UnstructuredNodeList`s start at 0, meaning that the cursor is either before or
-/// inside the first item, depending on whether any indexes follow. The index len()-1 means that
-/// the cursor is before or inside the last item. The index len() is also valid, meaning that the
+/// Indexes into [UnstructuredNodeList]s start at 0, meaning that the cursor is either before or
+/// inside the first item, depending on whether any indexes follow. The index `len()-1` means that
+/// the cursor is before or inside the last item. The index `len()` is also valid, meaning that the
 /// cursor is positioned after the last item.
 /// 
 /// # Examples
@@ -30,8 +38,8 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 ///    45
 /// ```
 /// 
-/// The path [0] places the cursor at the beginning of the expression (i.e. at the beginning of the
-/// root node's `UnstructuredNodeList`):
+/// The path \[0\] places the cursor at the beginning of the expression (i.e. at the beginning of
+/// the root node's [UnstructuredNodeList]):
 /// 
 /// ```
 ///     23
@@ -39,7 +47,7 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 ///     45
 /// ```
 /// 
-/// The path [1] places it between the two digits of the first integer:
+/// The path \[1\] places it between the two digits of the first integer:
 ///
 /// ```
 ///     23
@@ -47,7 +55,7 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 ///     45
 /// ```
 /// 
-/// The path [3] places the cursor just before the fraction:
+/// The path \[3\] places the cursor just before the fraction:
 /// 
 /// ```
 ///     23
@@ -55,7 +63,7 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 ///     45
 /// ```
 /// 
-/// Navigating right once more to enter the top of the fraction extends the nav path to [3, 0, 0],
+/// Navigating right once more to enter the top of the fraction extends the nav path to \[3, 0, 0\],
 /// because the steps to reach the cursor are now:
 /// 
 /// 1. Go to index **3** of the root node list.

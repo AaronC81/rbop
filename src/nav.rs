@@ -4,6 +4,69 @@ use crate::{UnstructuredNodeList, render::{Layoutable, Renderer, LayoutComputati
 
 /// Describes the movements which must be taken down a node tree to reach the position of the 
 /// cursor.
+/// 
+/// Each of these movements is some kind of index, starting at the root. The exact meaning of each 
+/// index is dependent on the nodes in the tree - it isn't possible to interpret a path without the
+/// corresponding node tree.
+/// 
+/// As a general rule, indexes alternate between:
+/// 
+/// - Indexing some "slot" of an `UnstructuredNode`, for example 0 for the top of a fraction or 1
+///   for the bottom;
+/// - And indexing into the `UnstructuredNodeList` in that slot.
+/// 
+/// Indexes into `UnstructuredNodeList`s start at 0, meaning that the cursor is either before or
+/// inside the first item, depending on whether any indexes follow. The index len()-1 means that
+/// the cursor is before or inside the last item. The index len() is also valid, meaning that the
+/// cursor is positioned after the last item.
+/// 
+/// # Examples
+/// 
+/// Imagine the node tree for the following expression:
+/// 
+/// ```
+///    23
+/// 12+--
+///    45
+/// ```
+/// 
+/// The path [0] places the cursor at the beginning of the expression (i.e. at the beginning of the
+/// root node's `UnstructuredNodeList`):
+/// 
+/// ```
+///     23
+/// |12+--
+///     45
+/// ```
+/// 
+/// The path [1] places it between the two digits of the first integer:
+///
+/// ```
+///     23
+/// 1|2+--
+///     45
+/// ```
+/// 
+/// The path [3] places the cursor just before the fraction:
+/// 
+/// ```
+///     23
+/// 12+|--
+///     45
+/// ```
+/// 
+/// Navigating right once more to enter the top of the fraction extends the nav path to [3, 0, 0],
+/// because the steps to reach the cursor are now:
+/// 
+/// 1. Go to index **3** of the root node list.
+/// 2. Enter the top of the fraction, encoded by index **0**.
+/// 3. Go to index **0** of that node list.
+/// 
+/// ```
+///    |23
+/// 12+---
+///    45
+/// ```
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct NavPath {
     path: Vec<usize>,
@@ -46,11 +109,6 @@ impl NavPath {
     pub fn len(&self) -> usize {
         self.path.len()
     }
-
-    /// Gets the path navigation entry at the given index.
-    pub fn get_index(&self, i: usize) -> usize {
-        self.path[i]
-    }
 }
 
 impl core::ops::Index<usize> for NavPath {
@@ -61,6 +119,7 @@ impl core::ops::Index<usize> for NavPath {
     }
 }
 
+/// Provides utilities for stepping through a path, one index at a time.
 pub struct NavPathNavigator<'a> {
     path: &'a NavPath,
     index: usize,

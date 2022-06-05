@@ -201,7 +201,7 @@ impl UnstructuredNodeRoot {
                 let (outer_node, index) = self.root.navigate(&mut outer_path.to_navigator());
                 if let UnstructuredNode::FunctionCall(_, args) = &outer_node.items[index] {
                     // Can we move right into another argument?
-                    let current_arg_index = path.get_index(path.len() - 2);
+                    let current_arg_index = path[path.len() - 2];
                     if current_arg_index < args.len() - 1 {
                         // Yes, we can! Move right into the beginning of the next argument
                         path.pop(2);
@@ -257,7 +257,7 @@ impl UnstructuredNodeRoot {
                 let (outer_node, index) = self.root.navigate(&mut outer_path.to_navigator());
                 if let UnstructuredNode::FunctionCall(_, args) = &outer_node.items[index] {
                     // Can we move right into another argument?
-                    let current_arg_index = path.get_index(path.len() - 2);
+                    let current_arg_index = path[path.len() - 2];
                     if current_arg_index > 0 {
                         // Yes, we can! Move right into the end of the next argument
                         path.pop(2);

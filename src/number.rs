@@ -257,8 +257,8 @@ impl Number {
     ///   - 1.14000000000000003 would be corrected to 1.14 (`Decimal`)
     ///   - 1.9999999999997 would be corrected to 2 (`Rational`)
     /// 
-    /// This only has an effect for `Decimal` numbers with `DecimalAccuracy::Low` - others are
-    /// returned unchanged.
+    /// This only has an effect for `Decimal` numbers with `DecimalAccuracy::Approximation` - others
+    /// are returned unchanged.
     /// 
     /// If the intended number does actually look like one of these imprecise results, then this
     /// could result in a *loss* of precision instead.

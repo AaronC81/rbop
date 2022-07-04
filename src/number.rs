@@ -78,13 +78,14 @@ impl Number {
     }
 
     /// Simplifies this number:
-    ///   - For `Decimal`, this normalises the number. This performs lossless conversions such as
-    ///     removing trailing zeroes (which can occur in rust_decimal), and converting -0 to 0.
+    ///   - For `Decimal`, this normalises the number, and then performs floating point inaccuracy
+    ///     compensation. This is a potentially lossy operation, but more often that not results
+    ///     in better output.
     ///   - For `Rational`, this divides the numerator and denominator by their GCD. Also ensures
     ///     that any negative sign is on the numerator, not the denominator.
     pub fn simplify(&self) -> Number {
         match self {
-            Self::Decimal(d) => Self::Decimal(d.normalize()),
+            Self::Decimal(d) => Self::Decimal(d.normalize()).correct_float(),
 
             Self::Rational(numer, denom) => {
                 let sign = match (*numer < 0, *denom < 0) {
@@ -216,7 +217,7 @@ impl Number {
 
     /// The minimum number of repeated digits where `correct_float` will trigger a truncation.
     /// (This number wasn't picked for any particular reason, more just what felt about right!)
-    const CORRECT_FLOAT_DIGIT_THRESHOLD: usize = 6;
+    const CORRECT_FLOAT_DIGIT_THRESHOLD: usize = 10;
 
     /// Attempts to correct inaccuracies in this number introduced by imprecise operations, such as
     /// ones which convert to floating point.
@@ -228,8 +229,7 @@ impl Number {
     /// This only has an effect for `Decimal` numbers - `Rational`s are returned unchanged.
     /// 
     /// If the intended number does actually look like one of these imprecise results, then this
-    /// could result in a *loss* of precision instead. Therefore, this should only be called as part
-    /// of operations where such inaccuracies are likely.
+    /// could result in a *loss* of precision instead.
     pub fn correct_float(&self) -> Number {
         match self {
             Number::Decimal(d) if !d.is_whole() => {

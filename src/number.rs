@@ -7,20 +7,50 @@ use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::MathsError};
 
+/// Represents the accuracy of a `Decimal` number, based on how it was created.
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum DecimalAccuracy {
+    /// This number was derived from user input, and has only been used through exact operations.
+    Exact,
+
+    /// This number has been passed through operations which compute their results approximately.
+    Approximation,
+}
+
+impl DecimalAccuracy {
+    /// Given another accuracy, returns the least accurate of the two.
+    pub fn combine(self, other: Self) -> Self {
+        match (self, other) {
+            (DecimalAccuracy::Exact, DecimalAccuracy::Exact) => DecimalAccuracy::Exact,
+            _ => DecimalAccuracy::Approximation,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {
-    Decimal(Decimal),
+    Decimal(Decimal, DecimalAccuracy),
     Rational(i64, i64),
 }
 
 impl Number {
+    /// Gets the accuracy of this number, if it is a `Decimal`.
+    /// 
+    /// `Rational` numbers always return `DecimalAccuracy::Exact`.
+    pub fn accuracy(&self) -> DecimalAccuracy {
+        match self {
+            Number::Decimal(_, a) => *a,
+            Number::Rational(_, _) => DecimalAccuracy::Exact,
+        }
+    }
+
     /// Converts this number to a decimal:
     ///   - For `Decimal`, this simply unwraps the variant.
     ///   - For `Rational`, this divides the numerator by the denominator after converting both to
     ///     decimals.
     pub fn to_decimal(&self) -> Decimal {
         match self {
-            Number::Decimal(d) => *d,
+            Number::Decimal(d, _) => *d,
             Number::Rational(numer, denom)
                 => Decimal::from_i64(*numer).unwrap() / Decimal::from_i64(*denom).unwrap(),
         }
@@ -84,9 +114,7 @@ impl Number {
     ///     that any negative sign is on the numerator, not the denominator.
     pub fn simplify(&self) -> Number {
         match self {
-            // TODO: ideally, tag decimals which might need `correct_float` and only call it then,
-            // so we don't needlessly remove accuracy from known-exact calculations
-            Self::Decimal(d) => Self::Decimal(d.normalize()).correct_inaccuracy(),
+            Self::Decimal(d, a) => Self::Decimal(d.normalize(), *a).correct_inaccuracy(),
 
             Self::Rational(numer, denom) => {
                 let sign = match (*numer < 0, *denom < 0) {
@@ -106,7 +134,7 @@ impl Number {
     /// Returns the reciprocal of this number.
     pub fn reciprocal(&self) -> Number {
         match self {
-            Self::Decimal(d) => Self::Decimal(Decimal::one() / d),
+            Self::Decimal(d, a) => Self::Decimal(Decimal::one() / d, *a),
             Self::Rational(numer, denom) => Self::Rational(*denom, *numer),
         }
     }
@@ -114,7 +142,7 @@ impl Number {
     /// If this is a whole number, returns it. Otherwise returns None.
     pub fn to_whole(&self) -> Option<i64> {
         match self {
-            Self::Decimal(d)
+            Self::Decimal(d, _)
                 => if d.is_whole() { d.floor().to_i64() } else { None },
             Self::Rational(numer, denom)
                 => if numer % denom == 0 { Some(numer / denom) } else { None },
@@ -150,6 +178,7 @@ impl Number {
         } else {
             Ok(Number::Decimal(
                 self.to_decimal().checked_add(other.to_decimal()).ok_or(MathsError::Overflow)?,
+                self.accuracy().combine(other.accuracy()),
             ))
         }
     }
@@ -169,6 +198,7 @@ impl Number {
         } else {
             Ok(Number::Decimal(
                 self.to_decimal().checked_mul(other.to_decimal()).ok_or(MathsError::Overflow)?,
+                self.accuracy().combine(other.accuracy()),
             ).simplify())
         }
     }
@@ -212,7 +242,8 @@ impl Number {
         }
 
         Ok(Number::Decimal(
-            self.to_decimal().checked_powd(power.to_decimal()).ok_or(MathsError::Overflow)?
+            self.to_decimal().checked_powd(power.to_decimal()).ok_or(MathsError::Overflow)?,
+            DecimalAccuracy::Approximation,
         ))
     }
 
@@ -226,13 +257,14 @@ impl Number {
     ///   - 1.14000000000000003 would be corrected to 1.14 (`Decimal`)
     ///   - 1.9999999999997 would be corrected to 2 (`Rational`)
     /// 
-    /// This only has an effect for `Decimal` numbers - `Rational`s are returned unchanged.
+    /// This only has an effect for `Decimal` numbers with `DecimalAccuracy::Low` - others are
+    /// returned unchanged.
     /// 
     /// If the intended number does actually look like one of these imprecise results, then this
     /// could result in a *loss* of precision instead.
     pub fn correct_inaccuracy(&self) -> Number {
         match self {
-            Number::Decimal(d) if !d.is_whole() => {
+            Number::Decimal(d, DecimalAccuracy::Approximation) if !d.is_whole() => {
                 // Iterate over digits of the fractional part, as a string
                 // This is pretty expensive, but it's a lot easier implementation-wise than dealing
                 // with leading zeroes when splitting off the fractional part into an integer
@@ -286,7 +318,7 @@ impl Number {
                             9 => d.trunc() + d.signum(), // 1.999... -> 2
 
                             _ => unreachable!(),
-                        })
+                        }, DecimalAccuracy::Approximation)
                     }
 
                     // Otherwise, there's still a fractional part, and we're operating on that
@@ -311,7 +343,7 @@ impl Number {
                         0 => Decimal::new(new_mantissa, new_scale), // 1.2000... -> 1.2
                         9 => Decimal::new(new_mantissa + sign, new_scale), // 1.2999 -> 1.3
                         _ => unreachable!(),
-                    })
+                    }, DecimalAccuracy::Approximation)
                 }
 
                 // No correction to do
@@ -336,7 +368,7 @@ impl Ord for Number {
 
 impl From<Decimal> for Number {
     fn from(d: Decimal) -> Self {
-        Self::Decimal(d)
+        Self::Decimal(d, DecimalAccuracy::Exact)
     }
 }
 
@@ -352,7 +384,7 @@ impl Neg for Number {
     fn neg(self) -> Self::Output {
         match self {
             Self::Rational(n, d) => Number::Rational(-n, d).simplify(),
-            Self::Decimal(d) => Self::Decimal(-d),
+            Self::Decimal(d, a) => Self::Decimal(-d, a),
         }
     }
 }
@@ -413,7 +445,7 @@ impl Zero for Number {
 
     fn is_zero(&self) -> bool {
         match *self {
-            Self::Decimal(d) => d.is_zero(),
+            Self::Decimal(d, _) => d.is_zero(),
             Self::Rational(n, _) => n.is_zero(),
         }
     }
@@ -426,8 +458,25 @@ impl One for Number {
 
     fn is_one(&self) -> bool {
         match *self {
-            Self::Decimal(d) => d.is_one(),
+            Self::Decimal(d, _) => d.is_one(),
             Self::Rational(n, d) => n == d,
+        }
+    }
+}
+
+impl Serializable for DecimalAccuracy {
+    fn serialize(&self) -> Vec<u8> {
+        vec![match self {
+            DecimalAccuracy::Exact => 1,
+            DecimalAccuracy::Approximation => 2,
+        }]
+    }
+
+    fn deserialize(bytes: &mut dyn Iterator<Item = u8>) -> Option<Self> {
+        match bytes.next()? {
+            1 => Some(DecimalAccuracy::Exact),
+            2 => Some(DecimalAccuracy::Approximation),
+            _ => None,
         }
     }
 }
@@ -435,9 +484,10 @@ impl One for Number {
 impl Serializable for Number {
     fn serialize(&self) -> Vec<u8> {
         match self {
-            Number::Decimal(d) => {
+            Number::Decimal(d, a) => {
                 let mut result = vec![1];
                 result.append(&mut d.serialize().to_vec());
+                result.append(&mut a.serialize());
                 result
             }
 
@@ -454,9 +504,11 @@ impl Serializable for Number {
         let first_byte = bytes.next()?;
         match first_byte {
             1 => {
-                Some(Number::Decimal(Decimal::deserialize(
+                let decimal = Decimal::deserialize(
                     bytes.take(16).collect::<Vec<_>>().try_into().ok()?
-                )))
+                );
+                let accuracy = DecimalAccuracy::deserialize(bytes)?;
+                Some(Number::Decimal(decimal, accuracy))
             }
 
             2 => {

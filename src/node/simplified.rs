@@ -14,7 +14,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use num_traits::{One, Zero};
 use rust_decimal::MathematicalOps;
 
-use crate::{Number, error::MathsError};
+use crate::{Number, error::MathsError, number::DecimalAccuracy};
 
 use super::function::Function;
 
@@ -214,11 +214,12 @@ impl SimplifiedNode {
                                 // no accuracy would be lost
                                 *self = SimplifiedNode::Number(base.powi(exp));
                                 status = PerformedReduction;
-                            } else if let Number::Decimal(exp) = exp {
+                            } else if let Number::Decimal(exp, _) = exp {
                                 // If the exponent is a non-whole decimal, precision loss is
                                 // inevitable anyway, so power now!
                                 *self = SimplifiedNode::Number(Number::Decimal(
-                                    base.to_decimal().powd(*exp)
+                                    base.to_decimal().powd(*exp),
+                                    DecimalAccuracy::Approximation,
                                 ));
                                 status = PerformedReduction;
                             } else if let Number::Rational(n, d) = exp {

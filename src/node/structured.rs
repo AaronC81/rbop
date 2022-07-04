@@ -10,6 +10,7 @@ use rust_decimal::{Decimal, MathematicalOps};
 use crate::Number;
 use crate::error::MathsError;
 use crate::node::common;
+use crate::number::DecimalAccuracy;
 use crate::render::{Glyph, LayoutBlock, Layoutable, Renderer, LayoutComputationProperties};
 use crate::nav::NavPathNavigator;
 
@@ -228,7 +229,7 @@ fn layout_binop(renderer: &mut impl Renderer, glyph: Glyph, properties: LayoutCo
 impl Layoutable for StructuredNode {
     fn layout(&self, renderer: &mut impl Renderer, path: Option<&mut NavPathNavigator>, properties: LayoutComputationProperties) -> LayoutBlock {
         match self {
-            StructuredNode::Number(Number::Decimal(mut number)) => {
+            StructuredNode::Number(Number::Decimal(mut number, _)) => {
                 let negative = number < Decimal::zero();
                 if negative {
                     number = -number;
@@ -258,11 +259,11 @@ impl Layoutable for StructuredNode {
             },
             StructuredNode::Number(Number::Rational(numer, denom)) => {
                 if *denom == 1 {
-                    StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())).layout(renderer, path, properties)
+                    StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap(), DecimalAccuracy::Exact)).layout(renderer, path, properties)
                 } else {
                     common::layout_fraction(
-                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap())),
-                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*denom).unwrap())),
+                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*numer).unwrap(), DecimalAccuracy::Exact)),
+                        &StructuredNode::Number(Number::Decimal(Decimal::from_i64(*denom).unwrap(), DecimalAccuracy::Exact)),
                         renderer,
                         None,
                         properties,

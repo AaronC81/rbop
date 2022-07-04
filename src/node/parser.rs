@@ -2,7 +2,7 @@ use alloc::{string::ToString, vec::Vec};
 use num_traits::Zero;
 use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}, MathematicalOps};
 
-use crate::{Number, error::NodeError};
+use crate::{Number, error::NodeError, number::DecimalAccuracy};
 
 use super::{structured::StructuredNode, unstructured::{Token, UnstructuredNode, Upgradable}};
 
@@ -193,13 +193,13 @@ impl<'a> Parser<'a> {
 
             self.accepts_power(StructuredNode::Number(
                 if is_decimal {
-                    Number::Decimal(number)
+                    Number::Decimal(number, DecimalAccuracy::Exact)
                 } else {
                     // Handle case where number doesn't fit in i64
                     if let Some(numerator) = number.to_i64() {
                         Number::Rational(numerator, 1)
                     } else {
-                        Number::Decimal(number)
+                        Number::Decimal(number, DecimalAccuracy::Exact)
                     }
                 }
             ))?

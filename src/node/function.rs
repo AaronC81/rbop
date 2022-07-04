@@ -2,7 +2,7 @@ use alloc::{vec::Vec, vec};
 use num_integer::Integer;
 use rust_decimal::{MathematicalOps, Decimal};
 
-use crate::{Number, error::MathsError};
+use crate::{Number, error::MathsError, number::DecimalAccuracy};
 
 use super::{structured::{EvaluationSettings, AngleUnit}, unstructured::Serializable};
 
@@ -56,17 +56,17 @@ impl Function {
                     Self::Sine => target.sin(),
                     Self::Cosine => target.cos(),
                     _ => unreachable!()
-                }))
+                }, DecimalAccuracy::Approximation))
             },
 
             Self::GreatestCommonDenominator => {
                 // This is an integer operation, so convert both numbers to integers - if we can't,
                 // just return 1
                 let int_a = if let Some(x) = arguments[0].to_whole() { x } else {
-                    return Ok(Number::Decimal(Decimal::ONE))
+                    return Ok(Number::Decimal(Decimal::ONE, DecimalAccuracy::Exact))
                 };
                 let int_b = if let Some(x) = arguments[1].to_whole() { x } else {
-                    return Ok(Number::Decimal(Decimal::ONE))
+                    return Ok(Number::Decimal(Decimal::ONE, DecimalAccuracy::Exact))
                 };
 
                 Ok(int_a.gcd(&int_b).into())

@@ -1,8 +1,8 @@
 use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
-use alloc::{vec, vec::Vec};
+use alloc::{vec, vec::Vec, string::ToString};
 use num_integer::{Roots, Integer};
-use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
+use num_traits::{FromPrimitive, One, ToPrimitive, Zero, Signed};
 use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::MathsError};
@@ -212,6 +212,113 @@ impl Number {
         Ok(Number::Decimal(
             self.to_decimal().checked_powd(power.to_decimal()).ok_or(MathsError::Overflow)?
         ))
+    }
+
+    /// The minimum number of repeated digits where `correct_float` will trigger a truncation.
+    /// (This number wasn't picked for any particular reason, more just what felt about right!)
+    const CORRECT_FLOAT_DIGIT_THRESHOLD: usize = 6;
+
+    /// Attempts to correct inaccuracies in this number introduced by imprecise operations, such as
+    /// ones which convert to floating point.
+    /// 
+    /// For example:
+    ///   - 1.14000000000000003 would be corrected to 1.14 (`Decimal`)
+    ///   - 1.9999999999997 would be corrected to 2 (`Rational`)
+    /// 
+    /// This only has an effect for `Decimal` numbers - `Rational`s are returned unchanged.
+    /// 
+    /// If the intended number does actually look like one of these imprecise results, then this
+    /// could result in a *loss* of precision instead. Therefore, this should only be called as part
+    /// of operations where such inaccuracies are likely.
+    pub fn correct_float(&self) -> Number {
+        match self {
+            Number::Decimal(d) if !d.is_whole() => {
+                // Iterate over digits of the fractional part, as a string
+                // This is pretty expensive, but it's a lot easier implementation-wise than dealing
+                // with leading zeroes when splitting off the fractional part into an integer
+                let d_str = d.to_string();
+                let fractional_digits = d_str
+                    .chars()
+                    .skip_while(|c| *c != '.')
+                    .skip(1)
+                    .map(|d| d.to_digit(10).unwrap())
+                    .collect::<Vec<_>>();
+
+                // Look for repetitions of "extreme" digits (0 or 9)
+                #[derive(Debug, Copy, Clone)] struct Repeat { start: usize, digit: u32, length: usize }
+                let mut current_repeat: Option<Repeat> = None;
+                for (i, digit) in fractional_digits.iter().enumerate() {
+                    match current_repeat {
+                        // If this digit matches the current repeat, increment its length and skip
+                        // the rest of the iteration, or break if we reached the threshold
+                        Some(ref mut repeat) if repeat.digit == *digit => {
+                            repeat.length += 1;
+                            if repeat.length >= Self::CORRECT_FLOAT_DIGIT_THRESHOLD { break }
+                            continue
+                        }
+
+                        // If the digit doesn't match the current repeat, cancel the repeat
+                        // (We don't skip the rest of the iteration because we might have gone from
+                        // one extreme digit to the other, so need to check to start a new repeat)
+                        Some(_) => {
+                            current_repeat = None;
+                        }
+
+                        // If there's no repeat ongoing, keep going
+                        None => (),
+                    }
+
+                    // Start new repeat if we have an extreme digit
+                    if *digit == 0 || *digit == 9 {
+                        current_repeat = Some(Repeat { start: i, digit: *digit, length: 1 });
+                    }
+                }
+
+                // If the final repeat exceeds the repeat threshold, let's truncate our number!
+                if let Some(repeat) = current_repeat
+                    && repeat.length >= Self::CORRECT_FLOAT_DIGIT_THRESHOLD
+                {
+                    // If the repetition began right at the start, we need to operate on the whole
+                    // part
+                    if repeat.start == 0 {
+                        return Number::Decimal(match repeat.digit {
+                            0 => d.trunc(), // 1.000... -> 1
+                            9 => d.trunc() + d.signum(), // 1.999... -> 2
+
+                            _ => unreachable!(),
+                        })
+                    }
+
+                    // Otherwise, there's still a fractional part, and we're operating on that
+                    // Let's construct a new mantissa and exponent, starting with just the whole
+                    // part
+                    let mut new_mantissa = d.trunc().to_i64().unwrap().abs();
+                    let mut new_scale = 0;
+
+                    // Insert the digits before the repetition started
+                    for digit in fractional_digits.iter().take(repeat.start) {
+                        new_mantissa *= 10;
+                        new_mantissa += *digit as i64;
+                        new_scale += 1;
+                    }
+
+                    // Re-apply sign
+                    let sign = d.signum().to_i64().unwrap();
+                    new_mantissa *= sign;
+
+                    // Construct new decimal and act on repeated digit
+                    return Number::Decimal(match repeat.digit {
+                        0 => Decimal::new(new_mantissa, new_scale), // 1.2000... -> 1.2
+                        9 => Decimal::new(new_mantissa + sign, new_scale), // 1.2999 -> 1.3
+                        _ => unreachable!(),
+                    })
+                }
+
+                // No correction to do
+                self.clone()
+            },
+            _ => self.clone(),
+        }
     }
 }
 

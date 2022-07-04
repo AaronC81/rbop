@@ -1300,3 +1300,25 @@ fn test_function_evaluation() {
         Ok(dec!(-1)),
     );
 }
+
+#[test]
+fn test_correct_float() {
+    // Down
+    assert_eq!(dec!(2.000000000000).correct_float(), dec!(2));
+    assert_eq!(dec!(2.000000000001).correct_float(), dec!(2));
+    assert_eq!(dec!(5.140200000000).correct_float(), dec!(5.1402));
+    assert_eq!(dec!(5.140200000001).correct_float(), dec!(5.1402));
+
+    // Up
+    assert_eq!(dec!(1.999999999999).correct_float(), dec!(2));
+    assert_eq!(dec!(1.999999999997).correct_float(), dec!(2));
+    assert_eq!(dec!(5.140199999999).correct_float(), dec!(5.1402));
+    assert_eq!(dec!(5.140199999997).correct_float(), dec!(5.1402));
+
+    // Zero and negatives
+    assert_eq!(dec!(0.000000000001).correct_float(), dec!(0));
+    assert_eq!(dec!(-4.99999999997).correct_float(), dec!(-5));
+    assert_eq!(dec!(-5.00000000001).correct_float(), dec!(-5));
+    assert_eq!(dec!(-4.13000000001).correct_float(), dec!(-4.13));
+    assert_eq!(dec!(-4.12999999999).correct_float(), dec!(-4.13));
+}

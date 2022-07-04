@@ -85,6 +85,8 @@ impl Number {
     ///     that any negative sign is on the numerator, not the denominator.
     pub fn simplify(&self) -> Number {
         match self {
+            // TODO: ideally, tag decimals which might need `correct_float` and only call it then,
+            // so we don't needlessly remove accuracy from known-exact calculations
             Self::Decimal(d) => Self::Decimal(d.normalize()).correct_float(),
 
             Self::Rational(numer, denom) => {

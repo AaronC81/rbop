@@ -78,16 +78,15 @@ impl Number {
     }
 
     /// Simplifies this number:
-    ///   - For `Decimal`, this normalises the number, and then performs floating point inaccuracy
-    ///     compensation. This is a potentially lossy operation, but more often that not results
-    ///     in better output.
+    ///   - For `Decimal`, this normalises the number, and then performs inaccuracy correction.
+    ///     This is a potentially lossy operation, but more often that not results in better output.
     ///   - For `Rational`, this divides the numerator and denominator by their GCD. Also ensures
     ///     that any negative sign is on the numerator, not the denominator.
     pub fn simplify(&self) -> Number {
         match self {
             // TODO: ideally, tag decimals which might need `correct_float` and only call it then,
             // so we don't needlessly remove accuracy from known-exact calculations
-            Self::Decimal(d) => Self::Decimal(d.normalize()).correct_float(),
+            Self::Decimal(d) => Self::Decimal(d.normalize()).correct_inaccuracy(),
 
             Self::Rational(numer, denom) => {
                 let sign = match (*numer < 0, *denom < 0) {
@@ -221,8 +220,7 @@ impl Number {
     /// (This number wasn't picked for any particular reason, more just what felt about right!)
     const CORRECT_FLOAT_DIGIT_THRESHOLD: usize = 10;
 
-    /// Attempts to correct inaccuracies in this number introduced by imprecise operations, such as
-    /// ones which convert to floating point.
+    /// Attempts to correct inaccuracies in this number introduced by imprecise operations.
     /// 
     /// For example:
     ///   - 1.14000000000000003 would be corrected to 1.14 (`Decimal`)
@@ -232,7 +230,7 @@ impl Number {
     /// 
     /// If the intended number does actually look like one of these imprecise results, then this
     /// could result in a *loss* of precision instead.
-    pub fn correct_float(&self) -> Number {
+    pub fn correct_inaccuracy(&self) -> Number {
         match self {
             Number::Decimal(d) if !d.is_whole() => {
                 // Iterate over digits of the fractional part, as a string

@@ -58,6 +58,12 @@ impl Display for AngleUnit {
 pub struct EvaluationSettings {
     /// The angle unit to use for trigonometric functions.
     pub angle_unit: AngleUnit,
+
+    /// If true, expensive operations such as trigonometric functions will be evaluated using 
+    /// floating-point operations, rather than using the methods provided by `rust_decimal` (which
+    /// typically use Taylor series expansions). This produces less accurate results, but is much
+    /// faster.
+    pub use_floats: bool,
 }
 
 impl StructuredNode {

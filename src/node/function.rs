@@ -1,5 +1,6 @@
 use alloc::{vec::Vec, vec};
 use num_integer::Integer;
+use num_traits::{ToPrimitive, FromPrimitive};
 use rust_decimal::{MathematicalOps, Decimal};
 
 use crate::{Number, error::MathsError, number::DecimalAccuracy};
@@ -52,11 +53,19 @@ impl Function {
                     target *= Decimal::PI / Decimal::from(180)
                 }
 
-                Ok(Number::Decimal(match self {
-                    Self::Sine => target.sin(),
-                    Self::Cosine => target.cos(),
-                    _ => unreachable!()
-                }, DecimalAccuracy::Approximation))
+                if settings.use_floats && let Some(float) = target.to_f32() {
+                    Ok(Number::Decimal(Decimal::from_f32(match self {
+                        Self::Sine => libm::sinf(float),
+                        Self::Cosine => libm::cosf(float),
+                        _ => unreachable!()
+                    }).unwrap(), DecimalAccuracy::Approximation))
+                } else {
+                    Ok(Number::Decimal(match self {
+                        Self::Sine => target.sin(),
+                        Self::Cosine => target.cos(),
+                        _ => unreachable!()
+                    }, DecimalAccuracy::Approximation))
+                }
             },
 
             Self::GreatestCommonDenominator => {

@@ -22,12 +22,12 @@ pub mod decimal_ext;
 pub mod number;
 
 #[cfg(test)]
-pub mod tests;
+mod tests;
 
 pub use crate::{
     number::Number,
     node::{
-        unstructured::{UnstructuredNode, Token, UnstructuredNodeList, UnstructuredItem},
+        unstructured::{UnstructuredNode, Token, UnstructuredNodeList, UnstructuredItem, UnstructuredNodeRoot},
         structured::StructuredNode,
     }
 };

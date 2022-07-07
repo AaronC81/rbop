@@ -57,8 +57,8 @@ macro_rules! dec_approx {
 
 macro_rules! reserialize {
     ($e:expr) => {
-        <UnstructuredNodeRoot as crate::node::unstructured::Serializable>::deserialize(
-            &mut <_ as crate::node::unstructured::Serializable>::serialize(&$e).into_iter()
+        <UnstructuredNodeRoot as crate::serialize::Serializable>::deserialize(
+            &mut <_ as crate::serialize::Serializable>::serialize(&$e).into_iter()
         ).unwrap()
     };
 }

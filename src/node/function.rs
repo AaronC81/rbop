@@ -3,9 +3,9 @@ use num_integer::Integer;
 use num_traits::{ToPrimitive, FromPrimitive};
 use rust_decimal::{MathematicalOps, Decimal};
 
-use crate::{Number, error::MathsError, number::DecimalAccuracy};
+use crate::{Number, error::MathsError, number::DecimalAccuracy, serialize::Serializable};
 
-use super::{structured::{EvaluationSettings, AngleUnit}, unstructured::Serializable};
+use super::{structured::{EvaluationSettings, AngleUnit}};
 
 /// A mathematical function, for which an invocation may appear in an unstructured or structured
 /// node tree.

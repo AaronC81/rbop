@@ -162,9 +162,16 @@ impl<'a> NavPathNavigator<'a> {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum MoveVerticalDirection {
     Up,
     Down,
+}
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum MoveResult {
+    MovedWithin,
+    MovedOut,
 }
 
 /// Given two unstructured nodes which are vertically centre-aligned, and a direction in which

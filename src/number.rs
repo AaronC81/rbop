@@ -5,7 +5,7 @@ use num_integer::{Roots, Integer};
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero, Signed};
 use rust_decimal::{Decimal, MathematicalOps};
 
-use crate::{decimal_ext::DecimalExtensions, node::unstructured::Serializable, error::MathsError};
+use crate::{decimal_ext::DecimalExtensions, serialize::Serializable, error::MathsError};
 
 /// Represents the accuracy of a `Decimal` number, based on how it was created.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

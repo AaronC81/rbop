@@ -20,6 +20,7 @@ pub mod render;
 pub mod renderers;
 pub mod decimal_ext;
 pub mod number;
+pub mod serialize;
 
 #[cfg(test)]
 mod tests;

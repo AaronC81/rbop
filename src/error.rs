@@ -2,7 +2,7 @@
 
 use alloc::{fmt, vec, vec::Vec};
 
-use crate::node::unstructured::Serializable;
+use crate::serialize::Serializable;
 
 /// A trait implemented on any rbop error.
 pub trait Error : alloc::fmt::Display + alloc::fmt::Debug {}

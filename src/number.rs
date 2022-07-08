@@ -107,6 +107,14 @@ impl Number {
         }
     }
 
+    /// Returns an absolute version of this number, with the negative sign removed.
+    fn abs(&self) -> Number {
+        match self {
+            Self::Decimal(d, a) => Self::Decimal(d.abs(), *a),
+            Self::Rational(numer, denom) => Self::Rational(numer.abs(), denom.abs()),
+        }
+    }
+
     /// Simplifies this number:
     ///   - For `Decimal`, this normalises the number, and then performs inaccuracy correction.
     ///     This is a potentially lossy operation, but more often that not results in better output.

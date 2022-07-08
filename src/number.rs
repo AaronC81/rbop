@@ -135,10 +135,25 @@ impl Number {
     }
 
     /// Returns an absolute version of this number, with the negative sign removed.
-    fn abs(&self) -> Number {
+    pub fn abs(&self) -> Number {
         match self {
             Self::Decimal(d, a) => Self::Decimal(d.abs(), *a),
             Self::Rational(numer, denom) => Self::Rational(numer.abs(), denom.abs()),
+        }
+    }
+
+    /// Returns a `Rational` number representing the sign of this number:
+    ///   - 1 if it is positive
+    ///   - -1 if it is negative
+    ///   - 0 if it is zero
+    pub fn signum(&self) -> Number {
+        match self {
+            Number::Decimal(d, _) => {
+                if d.is_sign_positive() { return Number::Rational(1, 1) }
+                else if d.is_sign_negative() { return Number::Rational(-1, 1) }
+                else { return Number::Rational(0, 1) }
+            }
+            Number::Rational(numer, _) => Number::Rational(numer.signum(), 1),
         }
     }
 

@@ -1,3 +1,6 @@
+//! Defines a number format which offers improved practicality over traditional floating-point
+//! numbers.
+
 use core::{cmp::Ordering, convert::TryInto, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
 use alloc::{vec, vec::Vec, string::ToString};
@@ -7,7 +10,7 @@ use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{decimal_ext::DecimalExtensions, serialize::Serializable, error::MathsError};
 
-/// Represents the accuracy of a `Decimal` number, based on how it was created.
+/// Represents the accuracy of a [Decimal] number, based on how it was created.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DecimalAccuracy {
     /// This number was derived from user input, and has only been used through exact operations.
@@ -27,16 +30,40 @@ impl DecimalAccuracy {
     }
 }
 
+/// A versatile format for representing numbers. There are currently two variants - see their
+/// documentation for more info.
+/// 
+/// Performing arithmetic may convert between the variants where appropriate.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Number {
+    /// A decimal number, as provided by the `rust_decimal` library. These use an integer mantissa
+    /// and exponent to encode decimals with more accurately than floating points.
+    /// 
+    /// This variant also tracks the [DecimalAccuracy] of the number. This is a rather arbitrary
+    /// metric, but essentially tracks whether calling [simplify](#method.simplify) on the number
+    /// will also perform inaccuracy correction. (See
+    /// [correct_inaccuracy](#method.correct_inaccuracy) for more info on what this entails.)
+    /// 
+    /// As a general rule, decimals entered by a user or hardcoded by a developer should always be
+    /// [DecimalAccuracy::Exact]. Certain arithmetic operations which perform approximations may
+    /// choose to downgrade the accuracy in their results.
     Decimal(Decimal, DecimalAccuracy),
+
+    /// A rational number, composed of a numerator and denominator.
+    /// 
+    /// If rationals are negative, the negative sign *must* be on the numerator, not the
+    /// denominator. If your rational is the result of unknown input and you would like to be sure
+    /// of this, [simplify](#method.simplify) will correct a negative sign on the denominator.
+    /// 
+    /// These do not need to be simplified to be valid - the rational 2/4 is equally as valid as 1/2
+    /// for arithmetic operations.
     Rational(i64, i64),
 }
 
 impl Number {
     /// Gets the accuracy of this number, if it is a `Decimal`.
     /// 
-    /// `Rational` numbers always return `DecimalAccuracy::Exact`.
+    /// `Rational` numbers always return [DecimalAccuracy::Exact].
     pub fn accuracy(&self) -> DecimalAccuracy {
         match self {
             Number::Decimal(_, a) => *a,
@@ -262,11 +289,15 @@ impl Number {
     /// Attempts to correct inaccuracies in this number introduced by imprecise operations.
     /// 
     /// For example:
-    ///   - 1.14000000000000003 would be corrected to 1.14 (`Decimal`)
-    ///   - 1.9999999999997 would be corrected to 2 (`Rational`)
+    ///   - 1.14000000000000003 would be corrected to 1.14
+    ///   - 1.9999999999997 would be corrected to 2.0
     /// 
-    /// This only has an effect for `Decimal` numbers with `DecimalAccuracy::Approximation` - others
+    /// This only has an effect for `Decimal` numbers with [DecimalAccuracy::Approximation] - others
     /// are returned unchanged.
+    /// 
+    /// The result is always a `Decimal`, even if it is clearly a whole integer which could be a
+    /// `Rational` instead. If you know the result is whole, you can extract it as an integer with
+    /// [to_whole](#method.to_whole) and construct a `Rational` from it.
     /// 
     /// If the intended number does actually look like one of these imprecise results, then this
     /// could result in a *loss* of precision instead.

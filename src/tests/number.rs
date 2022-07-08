@@ -1,6 +1,6 @@
 use alloc::vec;
 
-use crate::{StructuredNode, node::{unstructured::Upgradable, structured::EvaluationSettings, function::Function}, error::NodeError};
+use crate::{StructuredNode, node::{unstructured::Upgradable, structured::EvaluationSettings, function::Function}, error::NodeError, UnstructuredNodeRoot, UnstructuredNode};
 
 #[test]
 fn test_decimals() {
@@ -84,5 +84,42 @@ fn test_correct_float() {
             + Function::Cosine.evaluate(&[dec!(1)], &es).unwrap().powi(2)
         ).correct_inaccuracy(),
         dec_approx!(1),
+    );
+}
+
+#[test]
+fn test_unstructured_parse_from_number() {
+    // Decimals
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(dec!(12.3)).root,
+        tokens!(1 2 . 3),
+    );
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(dec!(-12.3)).root,
+        tokens!(- 1 2 . 3),
+    );
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(dec!(0.00000000001)).root,
+        tokens!(0 . 0 0 0 0 0 0 0 0 0 0 1),
+    );
+
+    // Whole rationals
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(rat!(42)).root,
+        tokens!(4 2),
+    );
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(rat!(-42)).root,
+        tokens!(- 4 2),
+    );
+
+    // Non-whole rationals
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(rat!(71, 3)).root,
+        uns_list!(UnstructuredNode::Fraction(tokens!(7 1), tokens!(3))),
+    );
+    assert_eq!(
+        UnstructuredNodeRoot::from_number(rat!(-71, 3)).root,
+        uns_list!(UnstructuredNode::Fraction(tokens!(- 7 1), tokens!(3))),
     );
 }

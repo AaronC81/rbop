@@ -21,6 +21,7 @@ pub mod renderers;
 pub mod decimal_ext;
 pub mod number;
 pub mod serialize;
+pub mod evaluate;
 
 #[cfg(test)]
 mod tests;

@@ -339,3 +339,16 @@ impl Simplifiable for StructuredNode {
         }
     }
 }
+
+impl crate::evaluate::Evaluable for StructuredNode {
+    type Substituted = Self;
+    type Settings = EvaluationSettings;
+
+    fn evaluate(self, settings: &Self::Settings) -> Result<Number, MathsError> {
+        StructuredNode::evaluate(&self, settings)
+    }
+
+    fn substitute(self, variable: char, value: Number) -> Self::Substituted {
+        self.substitute_variable(variable, &StructuredNode::Number(value))
+    }
+}

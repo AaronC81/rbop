@@ -439,10 +439,9 @@ impl LayoutBlock {
         for (i, layout) in layouts.clone().into_iter().enumerate() {
             let i = i - i_offset;
             if layout.special.baseline_merge_with_high_precedence {
-                // Get the layout to this one's left (or do nothing if it's at the start, in which
-                // case .get will be None)
-                if let Some(layout_to_left) = layouts.get(i - 1) {
-                    let layout_to_left = layout_to_left.clone();
+                // Get the layout to this one's left (or do nothing if it's at the start)
+                if i > 0 {
+                    let layout_to_left = layouts[i - 1].clone();
 
                     // Remove both layouts
                     layouts.drain((i - 1)..=i);

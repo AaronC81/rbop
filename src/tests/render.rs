@@ -387,3 +387,10 @@ fn test_size_reduction_level() {
         }
     }
 }
+
+#[test]
+fn test_power_with_no_base() {
+    // This used to panic - make sure it doesn't
+    let block = UnstructuredNodeRoot { root: uns_list!(UnstructuredNode::Power(uns_list!())) };
+    block.layout(&mut AsciiRenderer::default(), None, LayoutComputationProperties::default());
+}

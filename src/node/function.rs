@@ -1,3 +1,6 @@
+//! Mathematical functions which can be used by all kinds of node tree, and called during
+//! evaluation.
+
 use alloc::{vec::Vec, vec};
 use num_integer::Integer;
 use num_traits::{ToPrimitive, FromPrimitive};

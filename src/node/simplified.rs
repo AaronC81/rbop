@@ -1,12 +1,15 @@
-// This module sets out a simplified node tree which contains fewer variants than `StructeredNode`.
-// For example, 1 - 2 is just 1 + (-1 * 2), so there is no need for a subtraction node. This makes
-// it easier to perform simplification passes on the tree.
-//
-// This is very heavily inspired by the system used by Poincaré, the mathematics system in NumWorks'
-// Epsilon. The fantastic people at NumWorks have written some really nice documentation about the
-// inner workings of Poincaré: https://www.numworks.com/resources/engineering/software/poincare/
-// (The ways that rbop and Poincaré do things are actually quite similar, so this would've been a
-// handy page to find earlier!)
+//! A **very unfinished** attempt at writing a simplified node tree, more suitable for symbolic
+//! manipulation. **Do not use yet!**
+//!
+//! This module sets out a simplified node tree which contains fewer variants than `StructeredNode`.
+//! For example, 1 - 2 is just 1 + (-1 * 2), so there is no need for a subtraction node. This makes
+//! it easier to perform simplification passes on the tree.
+//!
+//! This is very heavily inspired by the system used by Poincaré, the mathematics system in NumWorks'
+//! Epsilon. The fantastic people at NumWorks have written some really nice documentation about the
+//! inner workings of Poincaré: https://www.numworks.com/resources/engineering/software/poincare/
+//! (The ways that rbop and Poincaré do things are actually quite similar, so this would've been a
+//! handy page to find earlier!)
 
 use core::{cmp::Ordering, mem};
 

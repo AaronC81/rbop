@@ -1,3 +1,12 @@
+//! The structured node tree, suited to evaluation.
+//! 
+//! If using rbop as a library for mathematical user input, then it is likely that you will want to
+//! construct an [unstructured](crate::node::unstructured) node tree first, and then
+//! [upgrade](crate::node::unstructured::Upgradable) to a structured node tree.
+//! 
+//! If using rbop as a mathematics utility library, then it is possible to construct structured
+//! nodes directly.
+
 use core::fmt::Display;
 use core::ops::Deref;
 
@@ -17,17 +26,43 @@ use crate::nav::NavPathNavigator;
 use super::function::Function;
 use super::simplified::{Simplifiable, SimplifiedNode};
 
+/// An structured node. See the [module-level documentation](crate::node::structured) for more
+/// information.
+/// 
+/// Note that structured nodes are two-operand only; `3+2+4` may be encoded as `Add(Add(3, 2), 4)`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum StructuredNode {
+    /// A constant number.
     Number(Number),
+
+    // A variable, identified by a character.
     Variable(char),
+
+    /// A square root applied to other structured nodes.
     Sqrt(Box<StructuredNode>),
+
+    /// A power, with both a base and exponent as structured nodes.
     Power(Box<StructuredNode>, Box<StructuredNode>),
+
+    /// A two-operand addition of two structured nodes.
     Add(Box<StructuredNode>, Box<StructuredNode>),
+
+    /// A two-operand subtraction of two structured nodes.
     Subtract(Box<StructuredNode>, Box<StructuredNode>),
+
+    /// A two-operand multiplication of two structured nodes.
     Multiply(Box<StructuredNode>, Box<StructuredNode>),
+
+    /// A two-operand division of two structured nodes.
     Divide(Box<StructuredNode>, Box<StructuredNode>),
+
+    /// Structured nodes enclosed in parentheses.
+    /// 
+    /// As structured nodes are rigidly-structured anyway, this does not affect evaluation, but may
+    /// be desirable for rendering.
     Parentheses(Box<StructuredNode>),
+
+    /// A function call, with a sequence of arguments passed as structured nodes.
     FunctionCall(Function, Vec<StructuredNode>),
 }
 
@@ -127,6 +162,9 @@ impl StructuredNode {
     }
 
     /// Evaluates this node into a single number.
+    /// 
+    /// Using the [Evaluable](crate::evaluate::Evaluable) trait is more desirable than calling this
+    /// method directly, but this still exists for backwards-compatibility.
     pub fn evaluate(&self, settings: &EvaluationSettings) -> Result<Number, MathsError> {
         match self {
             StructuredNode::Number(n) => Ok((*n).into()),

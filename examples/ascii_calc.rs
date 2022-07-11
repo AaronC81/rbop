@@ -91,7 +91,7 @@ mod ascii_calc {
     
                 Key::Char('+') => Some(UnstructuredNode::Token(Token::Add)),
                 Key::Char('-') => Some(UnstructuredNode::Token(Token::Subtract)),
-                Key::Char('x') => Some(UnstructuredNode::Token(Token::Multiply)),
+                Key::Char('*') => Some(UnstructuredNode::Token(Token::Multiply)),
                 Key::Char('/') => Some(UnstructuredNode::Fraction(
                     UnstructuredNodeList::new(),
                     UnstructuredNodeList::new(),
@@ -106,6 +106,9 @@ mod ascii_calc {
                 Key::Char('t') => Some(UnstructuredNode::new_function_call(Function::Sine)),
                 Key::Char('g') => Some(UnstructuredNode::new_function_call(Function::GreatestCommonDenominator)),
     
+                Key::Char('x') => Some(UnstructuredNode::Token(Token::Variable('x'))),
+                Key::Char('y') => Some(UnstructuredNode::Token(Token::Variable('y'))),
+ 
                 Key::Left => { root.move_left(&mut nav_path, &mut renderer, None); None }
                 Key::Right => { root.move_right(&mut nav_path, &mut renderer, None); None }
                 Key::Down => { root.move_down(&mut nav_path, &mut renderer, None); None },

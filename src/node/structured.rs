@@ -6,6 +6,10 @@
 //! 
 //! If using rbop as a mathematics utility library, then it is possible to construct structured
 //! nodes directly.
+//! 
+//! Due to the tree traversal required, repeated evaluations of a structured node can become rather
+//! slow. If you will be evaluating a single structured node many times with different variable
+//! values, consider using (compiled)[crate::node::compiled] nodes instead.
 
 use core::fmt::Display;
 use core::ops::Deref;

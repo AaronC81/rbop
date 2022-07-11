@@ -12,5 +12,6 @@ pub mod unstructured;
 pub mod structured;
 pub mod simplified;
 pub mod function;
+pub mod compiled;
 mod parser;
 mod common;

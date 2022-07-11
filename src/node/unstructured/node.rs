@@ -1,24 +1,44 @@
+//! The definition of the unstructured node tree itself.
+
 use core::iter::repeat;
 
 use alloc::{vec, vec::Vec, string::ToString};
 
 use crate::{node::function::Function, Number};
 
-
+/// An unstructured item, either a node or a node list. Useful for making functions which traverse
+/// node trees more generic.
 #[derive(Clone)]
 pub enum UnstructuredItem<'a> {
     Node(&'a UnstructuredNode),
     List(&'a UnstructuredNodeList),
 }
 
+/// A token which may appear in an unstructured node tree. These are simple, character-sized items
+/// which are simple to draw, with no further nodes nested inside them.
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Token {
+    /// An addition symbol.
     Add,
+
+    /// A subtraction symbol.
     Subtract,
+
+    /// A multiplication symbol. (It is possible for implicit multiplications to appear too, if
+    /// expressions are adjacent.)
     Multiply,
+
+    /// A division symbol. (If you would like the division to appear as a fraction, you may wish to
+    /// use [UnstructuredNode::Fraction] instead.)
     Divide,
+
+    /// A base-10 digit.
     Digit(u8),
+
+    /// A decimal point.
     Point,
+
+    /// A variable, denoted by a particular character.
     Variable(char),
 }
 
@@ -45,16 +65,28 @@ impl Token {
     }
 }
 
-/// An unstructured node is one which can be inputted by the user. Unstructured nodes have as little
-/// structure as possible - for example, "2+3*5" is represented as a flat list of tokens, with no
-/// respect for precedence.
+/// An unstructured node in the tree. See the
+/// [module-level documentation](crate::node::unstructured) for more information.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum UnstructuredNode {
+    /// A plain token.
     Token(Token),
+
+    /// A square root, applied to other unstructured nodes.
     Sqrt(UnstructuredNodeList),
+
+    /// A fraction/division, with two other lists of unstructured nodes as the numerator and
+    /// denominator.
     Fraction(UnstructuredNodeList, UnstructuredNodeList),
+
+    /// A set of parentheses containing other unstructured nodes.
     Parentheses(UnstructuredNodeList),
+    
+    /// A power of unstructured nodes. This node does not encode the base of the power - this is
+    /// only discovered by upgrading the tree.
     Power(UnstructuredNodeList),
+
+    /// A function call, with a sequence of arguments passed as unstructured nodes. 
     FunctionCall(Function, Vec<UnstructuredNodeList>),
 }
 
@@ -66,6 +98,7 @@ impl UnstructuredNode {
     }
 }
 
+/// An ordered sequence of unstructured nodes.
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct UnstructuredNodeList {
     pub items: Vec<UnstructuredNode>
@@ -77,6 +110,7 @@ impl UnstructuredNodeList {
     }
 }
 
+/// The root of a tree of unstructured nodes.
 #[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct UnstructuredNodeRoot {
     pub root: UnstructuredNodeList

@@ -1,9 +1,19 @@
+//! Defines and implements the [Upgradable] trait, for converting to a 
+//! [structured](crate::node::structured) node tree.
+
 use alloc::vec::Vec;
 
 use crate::{StructuredNode, error::NodeError, UnstructuredNodeList, node::parser, UnstructuredNodeRoot, UnstructuredNode};
 
-/// Implemented by types which can be _upgraded_ - that is, converted into a `StructuredNode`.
+/// Implemented by types which can be _upgraded_ - that is, converted into a
+/// [structured](crate::node::structured) node tree.
 pub trait Upgradable {
+    /// Attempts to upgrade this node tree, and returns a [StructuredNode] if it succeeds.
+    /// 
+    /// Failures will primarily occur due to syntax errors; for example, `3+` would be a valid
+    /// unstructured node tree (a pair of two tokens, `3` and `+`), but cannot be encoded as a
+    /// structured node tree because it is not a syntactically valid mathematical expression. In
+    /// cases like this, a [NodeError] is returned instead.
     fn upgrade(&self) -> Result<StructuredNode, NodeError>;
 }
 

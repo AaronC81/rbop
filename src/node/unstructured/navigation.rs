@@ -1,15 +1,27 @@
+//! Defines and implements [Navigable] for unstructured nodes, providing cursor navigation by
+//! manipulating a [NavPath].
+
 use alloc::{vec::Vec, vec};
 
 use crate::{nav::{NavPathNavigator, NavPath, MoveVerticalDirection, self, MoveResult}, UnstructuredNodeList, UnstructuredItem, UnstructuredNode, UnstructuredNodeRoot, render::{Renderer, Viewport, ViewportVisibility, CalculatedPoint}};
 
+/// A trait implemented on items which can contain a cursor (currently only
+/// [unstructured](crate::node::unstructured) nodes.)
+/// 
+/// This trait does not define how the cursor moves around - it only requires methods for resolving
+/// the node at the cursor.
 pub trait Navigable {
-    /// Given a navigation path, returns the node from following that path, and the index into that
-    /// node. The navigation path will always terminate on an unstructured node list, so the final
-    /// index in the path will be an index into the unstructured node list's items.
+    /// A variant of [navigate_trace](Navigable::navigate_trace) which uses no trace function.
     fn navigate(&mut self, path: &mut NavPathNavigator) -> (&mut UnstructuredNodeList, usize) {
         self.navigate_trace(path, |_| {})
     }
 
+    /// Given a navigation path, returns the node from following that path, and the index into that
+    /// node. It will also execute the function `trace` at every node encountered while navigating
+    /// to the destination.
+    /// 
+    /// The navigation path will always terminate on an unstructured node list, so the final index
+    /// in the path will be an index into the unstructured node list's items.
     fn navigate_trace<F>(&mut self, path: &mut NavPathNavigator, trace: F) -> (&mut UnstructuredNodeList, usize) 
         where F : FnMut(UnstructuredItem);
 }

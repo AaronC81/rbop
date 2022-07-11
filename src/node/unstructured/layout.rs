@@ -1,3 +1,5 @@
+//! Implements [Layoutable] for unstructured nodes, enabling them to be [rendered](crate::render).
+
 use alloc::{vec::Vec, vec};
 
 use crate::{render::{Layoutable, Renderer, LayoutComputationProperties, LayoutBlock, Glyph}, UnstructuredNodeRoot, nav::NavPathNavigator, UnstructuredNode, node::common, UnstructuredNodeList, UnstructuredItem};

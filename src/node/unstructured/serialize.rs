@@ -1,3 +1,5 @@
+//! Implements [Serializable] for unstructured nodes.
+
 use alloc::{vec::Vec, vec};
 
 use crate::{serialize::Serializable, UnstructuredNodeRoot, UnstructuredNodeList, UnstructuredNode, Token, node::function::Function};

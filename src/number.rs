@@ -83,6 +83,19 @@ impl Number {
         }
     }
 
+    /// Converts this number to a decimal, using the same rules as [to_decimal](#method.to_decimal),
+    /// but re-wraps the number in a [Number::Decimal] instead of returning a raw
+    /// [rust_decimal::Decimal].
+    /// 
+    /// If the number was already a `Decimal`, the [DecimalAccuracy] is retained. If converting from
+    /// a `Rational`, [DecimalAccuracy::Exact] is used.
+    pub fn to_decimal_number(&self) -> Number {
+        match self {
+            Number::Decimal(_, _) => self.clone(),
+            Number::Rational(_, _) => Number::Decimal(self.to_decimal(), DecimalAccuracy::Exact)
+        }
+    }
+
     /// Utility function which gets the greatest common denominator of two numbers. 
     fn gcd(a: i64, b: i64) -> i64 {
         if b == 0 {

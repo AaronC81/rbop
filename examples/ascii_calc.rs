@@ -4,8 +4,6 @@
 // This example doesn't implement a renderer - we're using the `AsciiRenderer` built into rbop.
 // For a more complete example which does implement its own renderer, refer to `window_calc`.
 
-#![feature(backtrace)]
-
 // Enforce `examples` feature is passed ------------------------------------------------------------
 #[cfg(not(feature = "examples"))]
 mod ascii_calc {

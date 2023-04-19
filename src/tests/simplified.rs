@@ -160,8 +160,8 @@ fn test_reduction() {
             ))
         ))),
         SimplifiedNode::Power(
-            box SimplifiedNode::Number(rat!(25)),
-            box SimplifiedNode::Number(rat!(1, 3)),
+            Box::new(SimplifiedNode::Number(rat!(25))),
+            Box::new(SimplifiedNode::Number(rat!(1, 3))),
         )
     );
 
@@ -181,12 +181,12 @@ fn test_reduction() {
         ))),
         SimplifiedNode::Multiply(vec![
             SimplifiedNode::Power(
-                box SimplifiedNode::Variable('x'),
-                box SimplifiedNode::Number(rat!(5)),
+                Box::new(SimplifiedNode::Variable('x')),
+                Box::new(SimplifiedNode::Number(rat!(5))),
             ),
             SimplifiedNode::Power(
-                box SimplifiedNode::Variable('y'),
-                box SimplifiedNode::Number(rat!(11)),
+                Box::new(SimplifiedNode::Variable('y')),
+                Box::new(SimplifiedNode::Number(rat!(11))),
             ),
         ])
     );
@@ -202,12 +202,12 @@ fn test_reduction() {
         ))),
         SimplifiedNode::Multiply(vec![
             SimplifiedNode::Power(
-                box SimplifiedNode::Variable('x'),
-                box SimplifiedNode::Number(rat!(6)),
+                Box::new(SimplifiedNode::Variable('x')),
+                Box::new(SimplifiedNode::Number(rat!(6))),
             ),
             SimplifiedNode::Power(
-                box SimplifiedNode::Variable('y'),
-                box SimplifiedNode::Number(rat!(3)),
+                Box::new(SimplifiedNode::Variable('y')),
+                Box::new(SimplifiedNode::Number(rat!(3))),
             ),
         ])
     );
@@ -221,8 +221,8 @@ fn test_reduction() {
         SimplifiedNode::Multiply(vec![
             SimplifiedNode::Number(rat!(3)),
             SimplifiedNode::Power(
-                box SimplifiedNode::Variable('x'),
-                box SimplifiedNode::Number(rat!(2)),
+                Box::new(SimplifiedNode::Variable('x')),
+                Box::new(SimplifiedNode::Number(rat!(2))),
             ),
         ]),
     );
@@ -253,8 +253,8 @@ fn test_reduction() {
             SimplifiedNode::Multiply(vec![
                 SimplifiedNode::Number(rat!(9)),
                 SimplifiedNode::Power(
-                    box SimplifiedNode::Variable('x'),
-                    box SimplifiedNode::Number(rat!(2)),
+                    Box::new(SimplifiedNode::Variable('x')),
+                    Box::new(SimplifiedNode::Number(rat!(2))),
                 ),
             ]),
         ])

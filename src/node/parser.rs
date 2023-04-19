@@ -1,4 +1,4 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::{string::ToString, vec::Vec, boxed::Box};
 use num_traits::Zero;
 use rust_decimal::{Decimal, prelude::{FromPrimitive, ToPrimitive}, MathematicalOps};
 
@@ -59,8 +59,8 @@ impl<'a> Parser<'a> {
         while let Some(UnstructuredNode::Power(exp)) = self.current() {
             self.advance();
             result = StructuredNode::Power(
-                box result,
-                box exp.upgrade()?,
+                Box::new(result),
+                Box::new(exp.upgrade()?),
             )
         }
 
@@ -76,9 +76,9 @@ impl<'a> Parser<'a> {
 
                 let left = out.clone();
                 if op == Token::Add {
-                    out = StructuredNode::Add(box left, box self.parse_level2()?);
+                    out = StructuredNode::Add(Box::new(left), Box::new(self.parse_level2()?));
                 } else if op == Token::Subtract {
-                    out = StructuredNode::Subtract(box left, box self.parse_level2()?);
+                    out = StructuredNode::Subtract(Box::new(left), Box::new(self.parse_level2()?));
                 } else {
                     unreachable!()
                 }
@@ -99,9 +99,9 @@ impl<'a> Parser<'a> {
 
                 let left = out.clone();
                 if op == Token::Multiply {
-                    out = StructuredNode::Multiply(box left, box self.parse_level3()?);
+                    out = StructuredNode::Multiply(Box::new(left), Box::new(self.parse_level3()?));
                 } else if op == Token::Divide {
-                    out = StructuredNode::Divide(box left, box self.parse_level3()?);
+                    out = StructuredNode::Divide(Box::new(left), Box::new(self.parse_level3()?));
                 } else {
                     unreachable!()
                 }
@@ -205,13 +205,13 @@ impl<'a> Parser<'a> {
             ))?
         } else if let Some(UnstructuredNode::Fraction(a, b)) = self.current() {
             self.advance();
-            self.accepts_power(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?))?
+            self.accepts_power(StructuredNode::Divide(Box::new(a.upgrade()?), Box::new(b.upgrade()?)))?
         } else if let Some(UnstructuredNode::Sqrt(n)) = self.current() {
             self.advance();
-            self.accepts_power(StructuredNode::Sqrt(box n.upgrade()?))?
+            self.accepts_power(StructuredNode::Sqrt(Box::new(n.upgrade()?)))?
         } else if let Some(UnstructuredNode::Parentheses(inner)) = self.current() {
             self.advance();
-            self.accepts_power(StructuredNode::Parentheses(box inner.upgrade()?))?
+            self.accepts_power(StructuredNode::Parentheses(Box::new(inner.upgrade()?)))?
         } else if let Some(UnstructuredNode::Power(_)) = self.current() {
             return Err(NodeError::PowerMissingBase)
         } else if let Some(Token::Variable(v)) = self.current_token() {
@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
             if let StructuredNode::Number(number) = &mut result {
                 *number *= Number::Rational(-1, 1);
             } else {
-                result = StructuredNode::Multiply(box StructuredNode::Number(Number::Rational(-1, 1)), box result);
+                result = StructuredNode::Multiply(Box::new(StructuredNode::Number(Number::Rational(-1, 1))), Box::new(result));
             }
         }
 
@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
                 | UnstructuredNode::Token(Token::Variable(_) | Token::Digit(_))
             )
         ) {
-            result = StructuredNode::Multiply(box result, box self.parse_level3()?);
+            result = StructuredNode::Multiply(Box::new(result), Box::new(self.parse_level3()?));
         }
 
         Ok(result)

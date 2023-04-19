@@ -5,7 +5,6 @@
 // the `ascii_calc` example first, as that will contain a more thorough description of handling
 // input and evaluation. This will focus more on the implementation of the renderer.
 
-#![feature(box_syntax)]
 #![feature(result_flattening)]
 
 // Enforce `examples` feature is passed ------------------------------------------------------------

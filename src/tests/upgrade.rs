@@ -7,14 +7,14 @@ fn test_upgrade() {
     assert_eq!(
         unstructured.upgrade().unwrap(),
         StructuredNode::Add(
-            box StructuredNode::Multiply(
-                box StructuredNode::Number(12.into()),
-                box StructuredNode::Number(34.into()),
-            ),
-            box StructuredNode::Multiply(
-                box StructuredNode::Number(56.into()),
-                box StructuredNode::Number(78.into()),
-            ),
+            Box::new(StructuredNode::Multiply(
+                Box::new(StructuredNode::Number(12.into())),
+                Box::new(StructuredNode::Number(34.into())),
+            )),
+            Box::new(StructuredNode::Multiply(
+                Box::new(StructuredNode::Number(56.into())),
+                Box::new(StructuredNode::Number(78.into())),
+            )),
         )
     );
 }
@@ -57,8 +57,8 @@ fn test_implicit_multiply() {
             token!(var x),
         ).upgrade().unwrap(),
         StructuredNode::Multiply(
-            box StructuredNode::Number(rat!(2)),
-            box StructuredNode::Variable('x'),
+            Box::new(StructuredNode::Number(rat!(2))),
+            Box::new(StructuredNode::Variable('x')),
         )
     );
 
@@ -71,8 +71,8 @@ fn test_implicit_multiply() {
             token!(var x),
         ).upgrade().unwrap(),
         StructuredNode::Multiply(
-            box StructuredNode::Number(dec!(0.5)),
-            box StructuredNode::Variable('x'),
+            Box::new(StructuredNode::Number(dec!(0.5))),
+            Box::new(StructuredNode::Variable('x')),
         )
     );
 
@@ -87,13 +87,13 @@ fn test_implicit_multiply() {
             )),
         ).upgrade().unwrap(),
         StructuredNode::Multiply(
-            box StructuredNode::Number(rat!(2)),
-            box StructuredNode::Parentheses(
-                box StructuredNode::Add(
-                    box StructuredNode::Number(rat!(1)),
-                    box StructuredNode::Variable('x'),
-                )
-            )
+            Box::new(StructuredNode::Number(rat!(2))),
+            Box::new(StructuredNode::Parentheses(
+                Box::new(StructuredNode::Add(
+                    Box::new(StructuredNode::Number(rat!(1))),
+                    Box::new(StructuredNode::Variable('x')),
+                ))
+            ))
         )
     );
 
@@ -107,14 +107,14 @@ fn test_implicit_multiply() {
             token!(2),
         ).upgrade().unwrap(),
         StructuredNode::Add(
-            box StructuredNode::Multiply(
-                box StructuredNode::Variable('x'),
-                box StructuredNode::Multiply(
-                    box StructuredNode::Variable('y'),
-                    box StructuredNode::Variable('z'),
-                ),
-            ),
-            box StructuredNode::Number(rat!(2)),
+            Box::new(StructuredNode::Multiply(
+                Box::new(StructuredNode::Variable('x')),
+                Box::new(StructuredNode::Multiply(
+                    Box::new(StructuredNode::Variable('y')),
+                    Box::new(StructuredNode::Variable('z')),
+                )),
+            )),
+            Box::new(StructuredNode::Number(rat!(2))),
         )
     );
 }

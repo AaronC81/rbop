@@ -118,7 +118,7 @@ impl StructuredNode {
 
     /// Returns a clone of this node wrapped in `Parentheses`.
     pub fn in_parentheses(&self) -> StructuredNode {
-        StructuredNode::Parentheses(box self.clone())
+        StructuredNode::Parentheses(Box::new(self.clone()))
     }
 
     /// If `parens` is true, returns a clone of this node wrapped in `Parentheses`, otherwise just
@@ -143,21 +143,21 @@ impl StructuredNode {
             StructuredNode::Multiply(l, r) => {
                 let l = l.in_parentheses_or_clone(l.add_or_sub());
                 let r = r.in_parentheses_or_clone(r.add_or_sub() || r.mul_or_div());
-                StructuredNode::Multiply(box l, box r)
+                StructuredNode::Multiply(Box::new(l), Box::new(r))
             }
             StructuredNode::Divide(l, r) => {
                 let l = l.in_parentheses_or_clone(l.add_or_sub());
                 let r = r.in_parentheses_or_clone(r.add_or_sub() || r.mul_or_div());
-                StructuredNode::Divide(box l, box r)
+                StructuredNode::Divide(Box::new(l), Box::new(r))
             }
 
             StructuredNode::Add(l, r) => {
                 let r = r.in_parentheses_or_clone(r.add_or_sub());
-                StructuredNode::Add(l.clone(), box r)
+                StructuredNode::Add(l.clone(), Box::new(r))
             }
             StructuredNode::Subtract(l, r) => {
                 let r = r.in_parentheses_or_clone(r.add_or_sub());
-                StructuredNode::Subtract(l.clone(), box r)
+                StructuredNode::Subtract(l.clone(), Box::new(r))
             }
 
             StructuredNode::Number(_) | StructuredNode::Sqrt(_) | StructuredNode::Parentheses(_) | StructuredNode::Variable(_) | StructuredNode::Power(_, _) | StructuredNode::FunctionCall(_, _)
@@ -364,12 +364,12 @@ impl Simplifiable for StructuredNode {
             ]),
 
             Self::Sqrt(n) => SimplifiedNode::Power(
-                box n.simplify(),
-                box SimplifiedNode::Number(Number::Rational(1, 2)),
+                Box::new(n.simplify()),
+                Box::new(SimplifiedNode::Number(Number::Rational(1, 2))),
             ),
             Self::Power(b, e) => SimplifiedNode::Power(
-                box b.simplify(),
-                box e.simplify(),
+                Box::new(b.simplify()),
+                Box::new(e.simplify()),
             ),
 
             Self::FunctionCall(func, args) => SimplifiedNode::FunctionCall(

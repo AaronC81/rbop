@@ -5,14 +5,14 @@ use crate::{StructuredNode, tests::util::complex_unstructured_expression, nav::N
 #[test]
 fn test_ascii_render() {
     let tree = StructuredNode::Add(
-        box StructuredNode::Multiply(
-            box StructuredNode::Number(12.into()),
-            box StructuredNode::Number(34.into()),
-        ),
-        box StructuredNode::Multiply(
-            box StructuredNode::Number(56.into()),
-            box StructuredNode::Number(78.into()),
-        ),
+        Box::new(StructuredNode::Multiply(
+            Box::new(StructuredNode::Number(12.into())),
+            Box::new(StructuredNode::Number(34.into())),
+        )),
+        Box::new(StructuredNode::Multiply(
+            Box::new(StructuredNode::Number(56.into())),
+            Box::new(StructuredNode::Number(78.into())),
+        )),
     ).disambiguate().unwrap();
     assert_eq!(
         render!(tree),
@@ -20,20 +20,20 @@ fn test_ascii_render() {
     );
 
     let tree = StructuredNode::Add(
-        box StructuredNode::Add(
-            box StructuredNode::Number(12.into()),
-            box StructuredNode::Divide(
-                box StructuredNode::Add(
-                    box StructuredNode::Number(34.into()),
-                    box StructuredNode::Divide(
-                        box StructuredNode::Number(56.into()),
-                        box StructuredNode::Number(78.into()),
-                    )
-                ),
-                box StructuredNode::Number(90.into()),
-            ),
-        ),
-        box StructuredNode::Number(12.into()),
+        Box::new(StructuredNode::Add(
+            Box::new(StructuredNode::Number(12.into())),
+            Box::new(StructuredNode::Divide(
+                Box::new(StructuredNode::Add(
+                    Box::new(StructuredNode::Number(34.into())),
+                    Box::new(StructuredNode::Divide(
+                        Box::new(StructuredNode::Number(56.into())),
+                        Box::new(StructuredNode::Number(78.into())),
+                    ))
+                )),
+                Box::new(StructuredNode::Number(90.into())),
+            )),
+        )),
+        Box::new(StructuredNode::Number(12.into())),
     ).disambiguate().unwrap();
     assert_eq!(
         render!(tree),
@@ -86,8 +86,8 @@ fn test_ascii_render() {
 
     // Rationals which aren't whole should be rendered as fractions
     let tree = StructuredNode::Add(
-        box StructuredNode::Number(rat!(2, 3)),
-        box StructuredNode::Number(rat!(1)),
+        Box::new(StructuredNode::Number(rat!(2, 3))),
+        Box::new(StructuredNode::Number(rat!(1))),
     );
     assert_eq!(
         render!(tree),
@@ -191,8 +191,8 @@ fn test_parentheses() {
 #[test]
 fn test_power() {
     let tree = StructuredNode::Power(
-        box StructuredNode::Number(dec!(12)),
-        box StructuredNode::Number(dec!(3)),
+        Box::new(StructuredNode::Number(dec!(12))),
+        Box::new(StructuredNode::Number(dec!(3))),
     ).disambiguate().unwrap();
     assert_eq!(
         render!(tree),
@@ -203,23 +203,23 @@ fn test_power() {
     );
 
     let tree = StructuredNode::Add(
-        box StructuredNode::Add(
-            box StructuredNode::Add(
-                box StructuredNode::Power(
-                    box StructuredNode::Number(dec!(12)),
-                    box StructuredNode::Number(dec!(3)),
-                ),
-                box StructuredNode::Power(
-                    box StructuredNode::Number(dec!(45)),
-                    box StructuredNode::Divide(
-                        box StructuredNode::Number(dec!(67)),
-                        box StructuredNode::Number(dec!(8)),
-                    ),
-                ),
-            ),
-            box StructuredNode::Number(dec!(9)),
-        ),
-        box StructuredNode::Number(1.into()),
+        Box::new(StructuredNode::Add(
+            Box::new(StructuredNode::Add(
+                Box::new(StructuredNode::Power(
+                    Box::new(StructuredNode::Number(dec!(12))),
+                    Box::new(StructuredNode::Number(dec!(3))),
+                )),
+                Box::new(StructuredNode::Power(
+                    Box::new(StructuredNode::Number(dec!(45))),
+                    Box::new(StructuredNode::Divide(
+                        Box::new(StructuredNode::Number(dec!(67))),
+                        Box::new(StructuredNode::Number(dec!(8))),
+                    )),
+                )),
+            )),
+            Box::new(StructuredNode::Number(dec!(9))),
+        )),
+        Box::new(StructuredNode::Number(1.into())),
     ).disambiguate().unwrap();
     assert_eq!(
         render!(tree),

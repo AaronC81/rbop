@@ -4,7 +4,6 @@
 // This example doesn't implement a renderer - we're using the `AsciiRenderer` built into rbop.
 // For a more complete example which does implement its own renderer, refer to `window_calc`.
 
-#![feature(box_syntax)]
 #![feature(backtrace)]
 
 // Enforce `examples` feature is passed ------------------------------------------------------------
@@ -41,14 +40,14 @@ mod ascii_calc {
     pub fn main() -> Result<(), Box<dyn Error>> {
         // Add a nice panic handler - this example is great for testing new rbop functionality, so
         // useful panic output is valuable
-        std::panic::set_hook(box |info| {
+        std::panic::set_hook(Box::new(|info| {
             println!("Panic!");
             println!("{:?}", info.payload().downcast_ref::<&str>());
     
             println!("{}", Backtrace::force_capture());
     
             std::thread::sleep(time::Duration::from_secs(2));
-        });
+        }));
             
         // Terminal setup using termion
         let stdin = stdin();

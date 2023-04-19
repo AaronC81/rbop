@@ -1,5 +1,6 @@
 use core::assert_matches::assert_matches;
 
+use alloc::boxed::Box;
 use rust_decimal::Decimal;
 
 use crate::{StructuredNode, node::{structured::{EvaluationSettings, AngleUnit}, function::Function}, Number, number::DecimalAccuracy};
@@ -9,18 +10,18 @@ use crate::{StructuredNode, node::{structured::{EvaluationSettings, AngleUnit}, 
 fn test_divide_by_zero() {
     // Rational
     let result = StructuredNode::Divide(
-        box StructuredNode::Number(rat!(12)),
-        box StructuredNode::Number(rat!(0)),
+        Box::new(StructuredNode::Number(rat!(12))),
+        Box::new(StructuredNode::Number(rat!(0))),
     ).disambiguate().unwrap().evaluate(&EvaluationSettings::default());
     assert_matches!(result, Err(_));
 
     // Decimal
     let result = StructuredNode::Add(
-        box StructuredNode::Divide(
-            box StructuredNode::Number(dec!(12)),
-            box StructuredNode::Number(dec!(0)),
-        ),
-        box StructuredNode::Number(dec!(0.1)),
+        Box::new(StructuredNode::Divide(
+            Box::new(StructuredNode::Number(dec!(12))),
+            Box::new(StructuredNode::Number(dec!(0))),
+        )),
+        Box::new(StructuredNode::Number(dec!(0.1))),
     ).disambiguate().unwrap().evaluate(&EvaluationSettings::default());
     assert_matches!(result, Err(_));
 }

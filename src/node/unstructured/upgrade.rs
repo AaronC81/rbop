@@ -1,7 +1,7 @@
 //! Defines and implements the [Upgradable] trait, for converting to a 
 //! [structured](crate::node::structured) node tree.
 
-use alloc::vec::Vec;
+use alloc::{vec::Vec, boxed::Box};
 
 use crate::{StructuredNode, error::NodeError, UnstructuredNodeList, node::parser, UnstructuredNodeRoot, UnstructuredNode};
 
@@ -36,13 +36,13 @@ impl Upgradable for UnstructuredNode {
     fn upgrade(&self) -> Result<StructuredNode, NodeError> {
         match self {
             UnstructuredNode::Sqrt(inner)
-                => Ok(StructuredNode::Sqrt(box inner.upgrade()?)),
+                => Ok(StructuredNode::Sqrt(Box::new(inner.upgrade()?))),
 
             UnstructuredNode::Parentheses(inner)
-                => Ok(StructuredNode::Parentheses(box inner.upgrade()?)),
+                => Ok(StructuredNode::Parentheses(Box::new(inner.upgrade()?))),
 
             UnstructuredNode::Fraction(a, b)
-                => Ok(StructuredNode::Divide(box a.upgrade()?, box b.upgrade()?)),
+                => Ok(StructuredNode::Divide(Box::new(a.upgrade()?), Box::new(b.upgrade()?))),
 
             // Parser should always handle this
             UnstructuredNode::Power(_)

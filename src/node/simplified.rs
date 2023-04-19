@@ -42,7 +42,7 @@ impl SimplifiedNode {
 
     /// Returns a new node: this node raised to the power -1.
     pub fn reciprocal(self) -> SimplifiedNode {
-        Self::Power(box self, box Self::Number(-Number::one()))
+        Self::Power(Box::new(self), Box::new(Self::Number(-Number::one())))
     }
 
     /// Sorts the entire node tree, and returns &mut self to allow method chaining.
@@ -91,8 +91,8 @@ impl SimplifiedNode {
             Self::Add(_) => Self::Add(self.flatten_children()),
             Self::Multiply(_) => Self::Multiply(self.flatten_children()),
             Self::Power(b, e) => Self::Power(
-                box b.flatten(),
-                box e.flatten()
+                Box::new(b.flatten()),
+                Box::new(e.flatten())
             ),
             Self::FunctionCall(func, args) => Self::FunctionCall(
                 func,
@@ -170,11 +170,11 @@ impl SimplifiedNode {
                         let new_outer_exponent = SimplifiedNode::Number(Number::Rational(1, *d));
 
                         *self = SimplifiedNode::Power(
-                            box SimplifiedNode::Power(
+                            Box::new(SimplifiedNode::Power(
                                 b.clone(),
-                                box new_inner_exponent,
-                            ),
-                            box new_outer_exponent,
+                                Box::new(new_inner_exponent),
+                            )),
+                            Box::new(new_outer_exponent),
                         );
 
                         // Restart the reduction for this node - this shouldn't recurse infinitely,
@@ -257,7 +257,7 @@ impl SimplifiedNode {
                         
                         *self = SimplifiedNode::Power(
                             inner_base.clone(),
-                            box new_exp,
+                            Box::new(new_exp),
                         );
                         status = PerformedReduction
                     }
@@ -271,7 +271,7 @@ impl SimplifiedNode {
 
                         for term in v {
                             new_terms.push(SimplifiedNode::Power(
-                                box term.clone(),
+                                Box::new(term.clone()),
                                 e.clone(),
                             ));
                         }
@@ -330,7 +330,7 @@ impl SimplifiedNode {
                             Ok((n.clone(), Number::one()))
                         },
                     |n, c|
-                        Ok(SimplifiedNode::Power(box n.clone(), box SimplifiedNode::Number(c)))
+                        Ok(SimplifiedNode::Power(Box::new(n.clone()), Box::new(SimplifiedNode::Number(c))))
                 )? == PerformedReduction {
                     self.reduce()?;
                     return Ok(PerformedReduction)
